@@ -12,19 +12,20 @@ When you have a dozen agents working across three apps, it's hard to tell which 
 
 Narrow the window and it turns into a single stacked list, so it can sit beside your agent app.
 
-*The UI is currently in Chinese. Screenshots use the built-in demo data.*
+*Screenshots use the built-in demo data.*
 
 <br clear="right">
 
 
 ## Features
 
-- **Status board** — four columns: *Needs you* → *Just finished, not viewed* → *Running* → *Recent*.
+- **Status board** — four columns: *Needs you* → *Just finished* (not opened yet) → *Running* → *Recent*.
 - **Project board** — Codex and Claude sessions from the same folder grouped together; Grok bots grouped by their team.
 - **Click to jump** — opens the conversation in its own app via the app's URL scheme (`codex://`, `claude://`, `grokbot://`).
 - **Fits a sidebar** — 4 columns when wide, 2×2 at half screen, a single stacked column when narrowed beside your agent app.
 - **Keyboard** — arrows to move, `Enter` to open, `Space` to peek at the last message, `U` to mark as viewed, `/` to search.
 - **Private and read-only** — everything stays on your Mac. It never modifies the apps' data and makes no network requests.
+- **English and Chinese** — follows your system language; add `?lang=en` or `?lang=zh` to the URL to switch.
 - **No dependencies** — one Python file (standard library only) and one HTML page. Light and dark mode.
 
 ## Requirements
@@ -62,9 +63,9 @@ Options:
 |---|---|---|---|
 | Running | last turn started and not finished | you sent a message and the turn hasn't ended | — |
 | Needs you | not available in Codex's local data | session is waiting for input or confirmation | bot is awaiting your reply |
-| Just finished, not viewed | finished after you last opened it from Agent Hub | finished after you last focused it in Claude | unread messages, or activity after you last viewed it |
+| Just finished | finished after you last opened it from Agent Hub | finished after you last focused it in Claude | unread messages, or activity after you last viewed it |
 
-Agent Hub remembers which finished conversations you opened (or marked with `U`) in `agent_hub_state.json` next to the script — the only file it writes. On first launch only the last 6 hours count as "not viewed", so your history doesn't flood the column.
+Agent Hub remembers which finished conversations you opened (or marked with `U`) in `agent_hub_state.json` next to the script — the only file it writes. On first launch only the last 6 hours count as "just finished", so your history doesn't flood the column.
 
 ## Limitations
 

@@ -141,7 +141,7 @@ def codex_sessions():
         out.append({
             "app": "codex",
             "id": tid,
-            "title": (title or "未命名对话").strip().splitlines()[0][:120],
+            "title": first_line(title),
             **folder_project(cwd),
             "preview": (preview or "").strip()[:240],
             "updatedAt": updated,
@@ -182,7 +182,7 @@ def claude_sessions():
         out.append({
             "app": "claude",
             "id": sid,
-            "title": d.get("title") or "未命名会话",
+            "title": d.get("title") or "",
             **folder_project(d.get("cwd", "")),
             "preview": summary_text(summary),
             "updatedAt": max(d.get("lastActivityAt") or 0, user_at, edge_at),
@@ -248,18 +248,18 @@ def grok_sessions():
             status = finish("idle", r.get("lastActivityAt") or 0, r.get("lastViewedAt") or 0, "grok", r["id"])
         if r.get("isGroup"):
             members = len(r.get("memberIds") or [])
-            project = {"source": f"群组 · {members} 个成员", "projectKey": f"grok:{r['id']}",
-                       "projectName": r.get("name") or "群组", "projectKind": "group"}
+            project = {"source": "", "sourceType": "members", "memberCount": members,
+                       "projectKey": f"grok:{r['id']}", "projectName": r.get("name") or "", "projectKind": "group"}
         elif r["id"] in parent:
             g = parent[r["id"]]
-            project = {"source": g.get("name") or "群组", "projectKey": f"grok:{g['id']}",
-                       "projectName": g.get("name") or "群组", "projectKind": "group"}
+            project = {"source": g.get("name") or "", "sourceType": "group",
+                       "projectKey": f"grok:{g['id']}", "projectName": g.get("name") or "", "projectKind": "group"}
         else:
-            project = {"source": "Bot", "projectKey": "grok:bots", "projectName": "Grok Bot", "projectKind": "group"}
+            project = {"source": "", "sourceType": "bot", "projectKey": "grok:bots", "projectName": "", "projectKind": "bots"}
         out.append({
             "app": "grok",
             "id": r["id"],
-            "title": r.get("name") or "未命名 Bot",
+            "title": r.get("name") or "",
             **project,
             "preview": strip_md_links(entry.get("text") or "")[:240],
             "updatedAt": activity,
@@ -279,9 +279,14 @@ def strip_md_links(text):
 
 def folder_project(cwd):
     if not cwd or "/scratch-workspaces/" in cwd:
-        return {"source": "无文件夹", "projectKey": "folder:none", "projectName": "无文件夹", "projectKind": "folder"}
+        return {"source": "", "sourceType": "nofolder", "projectKey": "folder:none", "projectName": "", "projectKind": "nofolder"}
     name = Path(cwd).name or cwd
-    return {"source": name, "projectKey": f"folder:{cwd}", "projectName": name, "projectKind": "folder"}
+    return {"source": name, "sourceType": "folder", "projectKey": f"folder:{cwd}", "projectName": name, "projectKind": "folder"}
+
+
+def first_line(text):
+    lines = (text or "").strip().splitlines()
+    return lines[0][:120] if lines else ""
 
 
 SOURCES = {"codex": codex_sessions, "claude": claude_sessions, "grok": grok_sessions}
@@ -291,34 +296,39 @@ SOURCES = {"codex": codex_sessions, "claude": claude_sessions, "grok": grok_sess
 DEMO = "--demo" in sys.argv
 
 
-def demo_sessions():
+def demo_sessions(lang):
     minute = 60 * 1000
     t = now_ms()
+    en = lang == "en"
+    content_team = "Content team" if en else "内容运营小组"
+    app_team = "App team" if en else "App 开发小组"
     rows = [
-        # app, title, project name, project kind, status, minutes ago, preview
-        ("grok", "社媒文案助手", "内容运营小组", "group", "waiting", 12, "这篇的语气对你的账号来说合适吗？要不要我再改得口语一点？"),
-        ("claude", "重构登录流程", "acme-web", "folder", "waiting", 4, "迁移脚本会删除旧的 session 表，确认后我再执行。"),
-        ("claude", "修复深色模式下的对比度问题", "acme-web", "folder", "unseen", 9, ""),
-        ("codex", "为支付模块补充单元测试", "acme-api", "folder", "unseen", 26, ""),
-        ("grok", "竞品调研", "Bot", "bot", "unseen", 55, ""),
-        ("codex", "升级依赖并修复构建", "acme-ios", "folder", "running", 7, ""),
-        ("claude", "设计系统组件文档", "design-system", "folder", "running", 3, ""),
-        ("codex", "整理 TestFlight 发布步骤", "acme-ios", "folder", "idle", 70, ""),
-        ("grok", "周报汇总", "内容运营小组", "group", "idle", 180, ""),
-        ("codex", "优化列表滚动性能", "acme-web", "folder", "idle", 240, ""),
-        ("claude", "API 错误码梳理", "acme-api", "folder", "idle", 420, ""),
-        ("grok", "产品经理", "App 开发小组", "group", "idle", 900, ""),
-        ("codex", "首页加载速度分析", "acme-web", "folder", "idle", 1500, ""),
-        ("grok", "UI 设计师", "App 开发小组", "group", "idle", 2000, ""),
+        # app, (zh title, en title), project, kind, status, minutes ago, (zh preview, en preview)
+        ("grok", ("社媒文案助手", "Social copywriter"), content_team, "group", "waiting", 12,
+         ("这篇的语气对你的账号来说合适吗？要不要我再改得口语一点？", "Does this tone fit your account? Want me to make it more casual?")),
+        ("claude", ("重构登录流程", "Refactor the sign-in flow"), "acme-web", "folder", "waiting", 4,
+         ("迁移脚本会删除旧的 session 表，确认后我再执行。", "The migration drops the old sessions table. Confirm and I'll run it.")),
+        ("claude", ("修复深色模式下的对比度问题", "Fix contrast issues in dark mode"), "acme-web", "folder", "unseen", 9, None),
+        ("codex", ("为支付模块补充单元测试", "Add unit tests for payments"), "acme-api", "folder", "unseen", 26, None),
+        ("grok", ("竞品调研", "Competitor research"), None, "bot", "unseen", 55, None),
+        ("codex", ("升级依赖并修复构建", "Upgrade dependencies and fix the build"), "acme-ios", "folder", "running", 7, None),
+        ("claude", ("设计系统组件文档", "Document design system components"), "design-system", "folder", "running", 3, None),
+        ("codex", ("整理 TestFlight 发布步骤", "Write up TestFlight release steps"), "acme-ios", "folder", "idle", 70, None),
+        ("grok", ("周报汇总", "Weekly report"), content_team, "group", "idle", 180, None),
+        ("codex", ("优化列表滚动性能", "Speed up list scrolling"), "acme-web", "folder", "idle", 240, None),
+        ("claude", ("API 错误码梳理", "Tidy up API error codes"), "acme-api", "folder", "idle", 420, None),
+        ("grok", ("产品经理", "Product manager"), app_team, "group", "idle", 900, None),
+        ("codex", ("首页加载速度分析", "Profile home page load time"), "acme-web", "folder", "idle", 1500, None),
+        ("grok", ("UI 设计师", "UI designer"), app_team, "group", "idle", 2000, None),
     ]
     out = []
     for i, (app, title, project, kind, status, ago, preview) in enumerate(rows):
-        source = project if kind != "bot" else "Bot"
         out.append({
-            "app": app, "id": f"demo-{i}", "title": title,
-            "source": source, "projectKey": f"{kind}:{project}", "projectName": "Grok Bot" if kind == "bot" else project,
-            "projectKind": "group" if kind in ("group", "bot") else "folder",
-            "preview": preview, "updatedAt": t - ago * minute,
+            "app": app, "id": f"demo-{i}", "title": title[en],
+            "source": project or "", "sourceType": kind,
+            "projectKey": f"{kind}:{project}", "projectName": project or "",
+            "projectKind": {"group": "group", "bot": "bots"}.get(kind, "folder"),
+            "preview": preview[en] if preview else "", "updatedAt": t - ago * minute,
             "runningSince": t - ago * minute if status == "running" else 0,
             "status": status,
         })
@@ -332,9 +342,9 @@ DEEP_LINKS = {
 }
 
 
-def collect():
+def collect(lang="zh"):
     if DEMO:
-        return {"sessions": demo_sessions(), "errors": {}, "generatedAt": now_ms(), "demo": True}
+        return {"sessions": demo_sessions(lang), "errors": {}, "generatedAt": now_ms(), "demo": True}
     sessions, errors = [], {}
     for name, fn in SOURCES.items():
         try:
@@ -358,10 +368,11 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
-        if self.path in ("/", "/index.html"):
+        if self.path.split("?")[0] in ("/", "/index.html"):
             self.send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
-        elif self.path == "/api/sessions":
-            self.send(200, collect())
+        elif self.path.split("?")[0] == "/api/sessions":
+            # The page passes its UI language; only demo data is localized server-side.
+            self.send(200, collect("en" if "lang=en" in self.path else "zh"))
         else:
             self.send(404, {"error": "not found"})
 
@@ -394,7 +405,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     url = f"http://{HOST}:{PORT}/"
-    print(f"Agent Hub 已启动{'（演示模式）' if DEMO else ''}：{url}  （Ctrl+C 退出）")
+    print(f"Agent Hub{' (demo)' if DEMO else ''}: {url}  (Ctrl+C to quit)")
     if "--no-open" not in sys.argv:
         webbrowser.open(url)
     try:
