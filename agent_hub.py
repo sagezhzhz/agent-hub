@@ -273,6 +273,77 @@ def grok_sessions():
     return out[:LIMIT_PER_APP]
 
 
+# ---------------------------------------------------------------- WorkBuddy
+
+# The overseas build keeps its data in ~/.workbuddy-ai and opens workbuddy-ai:// links;
+# the China build uses ~/.workbuddy and workbuddy://.
+WORKBUDDY_HOMES = [(HOME / ".workbuddy-ai", "workbuddy-ai"), (HOME / ".workbuddy", "workbuddy")]
+
+
+def workbuddy_home():
+    for home, scheme in WORKBUDDY_HOMES:
+        if (home / "workbuddy.db").exists():
+            return home, scheme
+    return None, None
+
+
+def workbuddy_status(raw):
+    """Same buckets as WorkBuddy's own normalizeTaskStatus."""
+    s = re.sub(r"[\s-]+", "_", (raw or "").strip().lower())
+    if s in ("planning", "preparing", "connecting", "working", "running", "tool_start", "tool_end", "handoff",
+             "summarizing", "waiting_team_members", "model_requesting", "model_streaming", "model_done",
+             "tool_executing"):
+        return "working"
+    if s in ("completed", "cancelled", "canceled", "done"):
+        return "completed"
+    if s in ("failed", "error", "terminated", "archived"):
+        return s
+    return "pending"  # pending, idle, await_input, waiting_input, … and anything unknown
+
+
+def workbuddy_sessions():
+    home, _ = workbuddy_home()
+    if not home:
+        return []
+    # immutable: the app keeps the file open in a way that makes a plain read-only open fail.
+    con = sqlite3.connect(f"file:{home / 'workbuddy.db'}?immutable=1", uri=True, timeout=2)
+    try:
+        rows = con.execute(
+            """select id, coalesce(nullif(custom_title,''), title), cwd, status,
+                      coalesce(last_activity_at, updated_at), is_playground
+               from sessions
+               where deleted_at is null and lower(status) != 'archived'
+               order by coalesce(last_activity_at, updated_at) desc
+               limit ?""",
+            (LIMIT_PER_APP,),
+        ).fetchall()
+    finally:
+        con.close()
+
+    out = []
+    for sid, title, cwd, raw_status, activity, playground in rows:
+        status, running_since = "idle", 0
+        state = workbuddy_status(raw_status)
+        if state == "working" and now_ms() - activity < RUNNING_STALE_SEC * 1000:
+            status, running_since = "running", activity
+        elif state == "pending" and activity:
+            status = "waiting"  # a turn has happened and the task is waiting for your input
+        elif state == "completed":
+            status = finish("idle", activity, 0, "workbuddy", sid)
+        out.append({
+            "app": "workbuddy",
+            "id": sid,
+            "title": first_line(title),
+            # Playground tasks run in a generated timestamp folder that means nothing to the user.
+            **folder_project("" if playground else cwd),
+            "preview": "",
+            "updatedAt": activity,
+            "runningSince": running_since,
+            "status": status,
+        })
+    return out
+
+
 def strip_md_links(text):
     return re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
 
@@ -291,7 +362,7 @@ def first_line(text):
     return lines[0][:120] if lines else ""
 
 
-SOURCES = {"codex": codex_sessions, "claude": claude_sessions, "grok": grok_sessions}
+SOURCES = {"codex": codex_sessions, "claude": claude_sessions, "grok": grok_sessions, "workbuddy": workbuddy_sessions}
 
 # ---------------------------------------------------------------- app icons
 
@@ -301,6 +372,7 @@ APP_ICONS = {
     "codex": [("Codex.app", None), ("ChatGPT.app", "app.icns")],  # Codex lives inside the ChatGPT app
     "claude": [("Claude.app", None)],
     "grok": [("Grok Bot.app", None)],
+    "workbuddy": [("WorkBuddy AI.app", None), ("WorkBuddy.app", None)],
 }
 ICON_CACHE = HOME / "Library" / "Caches" / "agent-hub"
 
@@ -368,6 +440,10 @@ def demo_sessions(lang):
         ("grok", ("产品经理", "Product manager"), app_team, "group", "idle", 900, None),
         ("codex", ("首页加载速度分析", "Profile home page load time"), "acme-web", "folder", "idle", 1500, None),
         ("grok", ("UI 设计师", "UI designer"), app_team, "group", "idle", 2000, None),
+        ("workbuddy", ("整理本周会议纪要", "Summarize this week's meetings"), None, "nofolder", "waiting", 18,
+         ("找到 5 份纪要，要按项目分组还是按日期？", "Found 5 sets of notes. Group them by project or by date?")),
+        ("workbuddy", ("生成季度汇报 PPT", "Build the quarterly review deck"), "reports", "folder", "running", 5, None),
+        ("workbuddy", ("对比三家供应商报价", "Compare three vendor quotes"), "reports", "folder", "idle", 300, None),
     ]
     out = []
     for i, (app, title, project, kind, status, ago, preview) in enumerate(rows):
@@ -375,7 +451,7 @@ def demo_sessions(lang):
             "app": app, "id": f"demo-{i}", "title": title[en],
             "source": project or "", "sourceType": kind,
             "projectKey": f"{kind}:{project}", "projectName": project or "",
-            "projectKind": {"group": "group", "bot": "bots"}.get(kind, "folder"),
+            "projectKind": {"group": "group", "bot": "bots", "nofolder": "nofolder"}.get(kind, "folder"),
             "preview": preview[en] if preview else "", "updatedAt": t - ago * minute,
             "runningSince": t - ago * minute if status == "running" else 0,
             "status": status,
@@ -387,6 +463,7 @@ DEEP_LINKS = {
     "codex": (re.compile(r"^[0-9a-f-]{36}$"), "codex://threads/{id}"),
     "claude": (re.compile(r"^local_[A-Za-z0-9-]{1,64}$"), "claude://code/continue?session={id}"),
     "grok": (re.compile(r"^[A-Za-z0-9_-]{1,128}$"), "grokbot://app/v1/agent?id={id}"),
+    "workbuddy": (re.compile(r"^[0-9a-f-]{36}$"), "{scheme}://chat/{id}"),
 }
 
 
@@ -418,7 +495,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.split("?")[0] in ("/", "/index.html"):
             self.send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
-        elif re.fullmatch(r"/icon/(codex|claude|grok)\.png", self.path):
+        elif re.fullmatch(r"/icon/(codex|claude|grok|workbuddy)\.png", self.path):
             png = app_icon_png(self.path[6:-4])
             if png:
                 self.send(200, png, "image/png")
@@ -451,7 +528,7 @@ class Handler(BaseHTTPRequestHandler):
         STATE.mark(app, sid)
         if self.path == "/api/seen":
             return self.send(200, {"ok": True})
-        url = template.format(id=sid)
+        url = template.format(id=sid, scheme=workbuddy_home()[1] or "workbuddy")
         subprocess.run(["open", url], check=False)
         self.send(200, {"ok": True, "url": url})
 
