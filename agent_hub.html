@@ -72,6 +72,9 @@
   .card .pv { font-size: 13px; color: var(--muted); line-height: 1.5; background: var(--soft); border-radius: 8px; padding: 8px 10px;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .card .foot { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .app-badge { display: inline-flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; }
+  .logo { width: 22px; height: 22px; flex-shrink: 0; object-fit: contain; display: block; }
+  .chip .logo { width: 16px; height: 16px; }
   .avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
   .avatar.codex { background: var(--codex); } .avatar.claude { background: var(--claude); } .avatar.grok { background: var(--grok); }
   .card .time { margin-left: auto; font-size: 13px; color: var(--faint); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
@@ -117,6 +120,7 @@
     .card .src { font-size: 12px; }
     .card .pv { font-size: 12.5px; padding: 6px 8px; -webkit-line-clamp: 2; }
     .avatar { width: 20px; height: 20px; font-size: 10px; }
+    .card .logo { width: 18px; height: 18px; }
     .card .foot { font-size: 13px; }
     .card .time { font-size: 12px; }
     .empty { padding: 10px 0 4px; font-size: 13px; }
@@ -301,6 +305,13 @@ function projectLabel(g) {
   return g.name;
 }
 
+// The app's real icon (served from the installed app) plus its name; a letter avatar if there's no icon.
+function appBadge(app, cls = "") {
+  const logo = el("img", { class: "logo", src: "/icon/" + app + ".png", alt: "" });
+  logo.addEventListener("error", () => logo.replaceWith(el("span", { class: "avatar " + app, "aria-hidden": "true" }, APPS[app][1])), { once: true });
+  return el("span", { class: ("app-badge " + cls).trim() }, logo, APPS[app][0]);
+}
+
 const titleOf = s => s.title || T.untitled;
 const keyOf = s => s.app + ":" + s.id;
 
@@ -329,7 +340,7 @@ function card(s, { showStatus }) {
     el("span", { class: "ttl" }, titleOf(s)),
     s.status === "waiting" && s.preview ? el("span", { class: "pv" }, s.preview) : null,
     el("span", { class: "foot" },
-      el("span", { class: "avatar " + s.app, role: "img", "aria-label": APPS[s.app][0], title: APPS[s.app][0] }, APPS[s.app][1]),
+      appBadge(s.app),
       el("span", { class: "time" }, status, timeLabel(s))),
   );
 }
@@ -385,7 +396,7 @@ function renderFilters() {
     box.append(el("button", {
       type: "button", class: "chip", "aria-pressed": String(filter === k),
       onclick: () => { filter = k; store.set("hub.filter", k); render(); },
-    }, k === "all" ? T.all : APPS[k][0]));
+    }, k === "all" ? T.all : appBadge(k)));
   }
 }
 
@@ -457,7 +468,7 @@ function showPeek(s) {
   const dlg = document.getElementById("peek");
   document.getElementById("peek-body").replaceChildren(
     el("div", { class: "src", style: "display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)" },
-      el("span", { class: "avatar " + s.app }, APPS[s.app][1]), APPS[s.app][0] + " · " + sourceLabel(s),
+      appBadge(s.app), "· " + sourceLabel(s),
       el("span", { style: "margin-left:auto;display:flex;gap:6px;align-items:center" }, statusIcon(s.status, 13), STATUS_TEXT[s.status])),
     el("h3", {}, titleOf(s)),
     el("p", {}, s.preview || T.noPreview),

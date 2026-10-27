@@ -3,8 +3,9 @@
 
 Reads each app's local data read-only, serves a dashboard on 127.0.0.1,
 and jumps back into the right app via its URL scheme when a card is clicked.
-The only file it writes is agent_hub_state.json next to this script, which
-remembers which finished conversations you have already looked at.
+It writes agent_hub_state.json next to this script, which remembers which
+finished conversations you have already looked at, and caches each app's icon
+as a PNG in ~/Library/Caches/agent-hub.
 Python 3 standard library only.
 """
 
@@ -12,6 +13,7 @@ import base64
 import glob
 import json
 import os
+import plistlib
 import re
 import sqlite3
 import subprocess
@@ -291,6 +293,52 @@ def first_line(text):
 
 SOURCES = {"codex": codex_sessions, "claude": claude_sessions, "grok": grok_sessions}
 
+# ---------------------------------------------------------------- app icons
+
+# Logos are taken from the apps installed on this Mac, not shipped with Agent Hub.
+# Each entry: (app bundle name, icon file in its Resources, or None for the bundle's own icon).
+APP_ICONS = {
+    "codex": [("Codex.app", None), ("ChatGPT.app", "app.icns")],  # Codex lives inside the ChatGPT app
+    "claude": [("Claude.app", None)],
+    "grok": [("Grok Bot.app", None)],
+}
+ICON_CACHE = HOME / "Library" / "Caches" / "agent-hub"
+
+
+def find_icns(app):
+    for bundle, icon in APP_ICONS.get(app, []):
+        for root in (Path("/Applications"), HOME / "Applications"):
+            resources = root / bundle / "Contents" / "Resources"
+            if not resources.is_dir():
+                continue
+            if icon is None:
+                try:
+                    with open(root / bundle / "Contents" / "Info.plist", "rb") as f:
+                        icon = plistlib.load(f).get("CFBundleIconFile") or ""
+                except (OSError, plistlib.InvalidFileException):
+                    continue
+                if icon and not icon.endswith(".icns"):
+                    icon += ".icns"
+            if icon and (resources / icon).is_file():
+                return resources / icon
+    return None
+
+
+def app_icon_png(app):
+    """PNG of the app's icon, converted once with macOS's sips and cached."""
+    icns = find_icns(app)
+    if not icns:
+        return None
+    out = ICON_CACHE / f"{app}.png"
+    try:
+        if not out.exists() or out.stat().st_mtime < icns.stat().st_mtime:
+            ICON_CACHE.mkdir(parents=True, exist_ok=True)
+            subprocess.run(["sips", "-s", "format", "png", "-Z", "64", str(icns), "--out", str(out)],
+                           check=True, capture_output=True, timeout=10)
+        return out.read_bytes()
+    except (OSError, subprocess.SubprocessError):
+        return None
+
 # --demo serves made-up conversations instead of reading the apps: for screenshots
 # and for trying the dashboard on a Mac without any of the apps installed.
 DEMO = "--demo" in sys.argv
@@ -370,6 +418,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.split("?")[0] in ("/", "/index.html"):
             self.send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
+        elif re.fullmatch(r"/icon/(codex|claude|grok)\.png", self.path):
+            png = app_icon_png(self.path[6:-4])
+            if png:
+                self.send(200, png, "image/png")
+            else:
+                self.send(404, {"error": "no icon"})
         elif self.path.split("?")[0] == "/api/sessions":
             # The page passes its UI language; only demo data is localized server-side.
             self.send(200, collect("en" if "lang=en" in self.path else "zh"))

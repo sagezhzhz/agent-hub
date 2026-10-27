@@ -24,6 +24,7 @@ Narrow the window and it turns into a single stacked list, so it can sit beside 
 - **Click to jump** — opens the conversation in its own app via the app's URL scheme (`codex://`, `claude://`, `grokbot://`).
 - **Fits a sidebar** — 4 columns when wide, 2×2 at half screen, a single stacked column when narrowed beside your agent app.
 - **Keyboard** — arrows to move, `Enter` to open, `Space` to peek at the last message, `U` to mark as viewed, `/` to search.
+- **Real app icons** — each card shows the app's own logo and name, taken from the apps installed on your Mac.
 - **Private and read-only** — everything stays on your Mac. It never modifies the apps' data and makes no network requests.
 - **English and Chinese** — follows your system language; add `?lang=en` or `?lang=zh` to the URL to switch.
 - **No dependencies** — one Python file (standard library only) and one HTML page. Light and dark mode.
@@ -65,7 +66,7 @@ Options:
 | Needs you | not available in Codex's local data | session is waiting for input or confirmation | bot is awaiting your reply |
 | Just finished | finished after you last opened it from Agent Hub | finished after you last focused it in Claude | unread messages, or activity after you last viewed it |
 
-Agent Hub remembers which finished conversations you opened (or marked with `U`) in `agent_hub_state.json` next to the script — the only file it writes. On first launch only the last 6 hours count as "just finished", so your history doesn't flood the column.
+Agent Hub remembers which finished conversations you opened (or marked with `U`) in `agent_hub_state.json` next to the script. Besides that, it only writes a cached PNG of each app's icon to `~/Library/Caches/agent-hub`. On first launch only the last 6 hours count as "just finished", so your history doesn't flood the column.
 
 ## Limitations
 
@@ -80,7 +81,7 @@ The server listens on `127.0.0.1` only. The page can only ask it to open a conve
 
 ## Not affiliated
 
-Agent Hub is an independent project and is not affiliated with or endorsed by OpenAI, Anthropic, or xAI. Product names are used only to describe compatibility.
+Agent Hub is an independent project and is not affiliated with or endorsed by OpenAI, Anthropic, or xAI. Product names are used only to describe compatibility. No logos are included in this repository: the icons you see are read at runtime from the apps installed on your Mac (a letter badge is shown if an app isn't installed).
 
 ## License
 
