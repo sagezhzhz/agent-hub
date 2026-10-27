@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-一个本地面板，统一查看你在各个**桌面应用**里运行的 AI agent 对话：Codex（ChatGPT 应用）、Claude、Grok Bot 和 WorkBuddy。点击卡片就能跳回对应应用里的那个对话。
+一个本地面板，统一查看你在各个**桌面应用**里运行的 AI agent 对话：Codex（ChatGPT 应用）、Claude、Grok Bot、WorkBuddy 和 Cursor 云端 agent。点击卡片就能跳回对应应用里的那个对话。
 
 同时开着十几个 agent、分散在三个应用里时，很难一眼看出哪个在等你回复、哪个刚做完、哪个还在跑。Agent Hub 读取各应用存在本地的数据，把所有对话按状态排进看板，点击卡片就在对应应用里打开那个对话。
 
@@ -21,7 +21,7 @@
 
 - **按状态看板**：四列，依次是「需要你处理 → 刚完成 · 未查看 → 运行中 → 最近」。
 - **按项目看板**：同一个文件夹下的 Codex 和 Claude 会话放在一起，Grok Bot 按所属群组归类。
-- **点击跳转**：用各应用自己的链接协议（`codex://`、`claude://`、`grokbot://`、`workbuddy-ai://`）打开对应对话。
+- **点击跳转**：用各应用自己的链接协议（`codex://`、`claude://`、`grokbot://`、`workbuddy-ai://`、`cursor://`）打开对应对话。
 - **适配侧边栏**：宽屏四列，半屏两列两行，缩窄放在 agent 应用旁边时变成一列竖排。
 - **键盘操作**：方向键选择，回车打开，空格预览最后一条消息，`U` 标为已看，`/` 搜索。
 - **真实应用图标**：每张卡片显示应用自己的图标和名称，图标取自你 Mac 上已安装的应用。
@@ -38,6 +38,7 @@
   - **Claude 桌面版** Code 页面的会话（读取 `~/Library/Application Support/Claude/claude-code-sessions`）
   - **Grok Bot 桌面版**（读取 `~/Library/Application Support/Grok Bot`）
   - **WorkBuddy 桌面版**（读取 `~/.workbuddy-ai`，国内版读取 `~/.workbuddy`）
+  - **Cursor** 的 Agents 窗口里的云端 agent（读取 Cursor 在 `~/Library/Application Support/Cursor` 里缓存的 agent 列表）。编辑器里的本地对话暂不支持。
 
 没装的应用会自动跳过。
 
@@ -61,11 +62,11 @@ python3 agent_hub.py
 
 ## 状态是怎么判断的
 
-| 状态 | Codex | Claude | Grok Bot | WorkBuddy |
-|---|---|---|---|---|
-| 运行中 | 最近一轮已开始、还没结束 | 你发了消息，这一轮还没结束 | — | 任务在规划或执行中 |
-| 需要你处理 | Codex 本地数据里没有这项 | 会话在等你输入或确认 | Bot 在等你回复 | 任务在等你输入 |
-| 刚完成 · 未查看 | 在你上次从面板打开之后又完成了 | 在你上次在 Claude 里查看之后又完成了 | 有未读消息，或在你上次查看之后有新动态 | 在你上次从面板打开之后又完成了 |
+| 状态 | Codex | Claude | Grok Bot | WorkBuddy | Cursor |
+|---|---|---|---|---|---|
+| 运行中 | 最近一轮已开始、还没结束 | 你发了消息，这一轮还没结束 | — | 任务在规划或执行中 | agent 在创建或运行中 |
+| 需要你处理 | Codex 本地数据里没有这项 | 会话在等你输入或确认 | Bot 在等你回复 | 任务在等你输入 | agent 在等你操作 |
+| 刚完成 · 未查看 | 在你上次从面板打开之后又完成了 | 在你上次在 Claude 里查看之后又完成了 | 有未读消息，或在你上次查看之后有新动态 | 在你上次从面板打开之后又完成了 | 未读，或在你上次查看之后有新动态 |
 
 你在面板里打开过（或按 `U` 标为已看）的对话，会记在脚本旁边的 `agent_hub_state.json` 里，此外只会把各应用图标转成 PNG 缓存到 `~/Library/Caches/agent-hub`。第一次启动时，只把最近 6 小时内完成的对话算作未查看，避免历史对话一下子全涌进这一列。
 
@@ -82,7 +83,7 @@ python3 agent_hub.py
 
 ## 声明
 
-Agent Hub 是独立项目，与 OpenAI、Anthropic、xAI、腾讯没有任何关联，也未获得它们的认可。文中提到的产品名称仅用于说明兼容性。仓库里不包含任何商标图标：界面上的图标是运行时从你 Mac 上已安装的应用里读取的，没装的应用显示字母徽标。
+Agent Hub 是独立项目，与 OpenAI、Anthropic、xAI、腾讯、Anysphere 没有任何关联，也未获得它们的认可。文中提到的产品名称仅用于说明兼容性。仓库里不包含任何商标图标：界面上的图标是运行时从你 Mac 上已安装的应用里读取的，没装的应用显示字母徽标。
 
 ## 许可证
 

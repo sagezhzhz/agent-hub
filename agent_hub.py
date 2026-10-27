@@ -344,6 +344,61 @@ def workbuddy_sessions():
     return out
 
 
+# ---------------------------------------------------------------- Cursor (cloud agents)
+
+# Cursor caches the cloud agents shown in its Agents window in the global VS Code state database.
+CURSOR_STATE = APP_SUPPORT / "Cursor" / "User" / "globalStorage" / "state.vscdb"
+# aiserver.v1.BackgroundComposerStatus: 1 RUNNING, 2 FINISHED, 3 ERROR, 4 CREATING, 5 EXPIRED
+CURSOR_RUNNING = (1, 4)
+
+
+def cursor_sessions():
+    if not CURSOR_STATE.exists():
+        return []
+    con = sqlite3.connect(f"file:{CURSOR_STATE}?immutable=1", uri=True, timeout=2)
+    try:
+        blobs = [v for (v,) in con.execute(
+            "select value from ItemTable where key like 'cloudAgentRepository.agents.%'")]
+    finally:
+        con.close()
+
+    out = []
+    for blob in blobs:
+        try:
+            agents = json.loads(blob)
+        except (TypeError, ValueError):
+            continue
+        for a in agents if isinstance(agents, list) else []:
+            bc_id = a.get("bcId")
+            if not bc_id or a.get("isArchived") or a.get("isOwnedByDifferentTeamMember"):
+                continue
+            activity = a.get("lastMessageActivityAtMs") or a.get("updatedAt") or 0
+            if a.get("hasPendingInteraction"):
+                status, running_since = "waiting", 0
+            elif a.get("status") in CURSOR_RUNNING and not a.get("isKilled"):
+                status, running_since = "running", a.get("updatedAt") or activity
+            elif a.get("isUnread"):
+                status, running_since = finish("idle", activity, 0, "cursor", bc_id), 0
+            else:
+                status, running_since = finish("idle", activity, a.get("lastReadAtMs") or activity, "cursor", bc_id), 0
+            repo = a.get("repoUrl") or ""
+            name = repo.rstrip("/").split("/")[-1] if repo else ""
+            out.append({
+                "app": "cursor",
+                "id": bc_id,
+                "title": first_line(a.get("name")),
+                "source": name, "sourceType": "folder" if name else "nofolder",
+                "projectKey": f"repo:{repo}" if repo else "folder:none",
+                "projectName": name, "projectKind": "folder" if name else "nofolder",
+                "preview": "",
+                "updatedAt": activity,
+                "runningSince": running_since,
+                "status": status,
+            })
+    out.sort(key=lambda s: s["updatedAt"], reverse=True)
+    return out[:LIMIT_PER_APP]
+
+
 def strip_md_links(text):
     return re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
 
@@ -362,7 +417,7 @@ def first_line(text):
     return lines[0][:120] if lines else ""
 
 
-SOURCES = {"codex": codex_sessions, "claude": claude_sessions, "grok": grok_sessions, "workbuddy": workbuddy_sessions}
+SOURCES = {"codex": codex_sessions, "claude": claude_sessions, "grok": grok_sessions, "workbuddy": workbuddy_sessions, "cursor": cursor_sessions}
 
 # ---------------------------------------------------------------- app icons
 
@@ -373,6 +428,7 @@ APP_ICONS = {
     "claude": [("Claude.app", None)],
     "grok": [("Grok Bot.app", None)],
     "workbuddy": [("WorkBuddy AI.app", None), ("WorkBuddy.app", None)],
+    "cursor": [("Cursor.app", None)],
 }
 ICON_CACHE = HOME / "Library" / "Caches" / "agent-hub"
 
@@ -442,6 +498,8 @@ def demo_sessions(lang):
         ("grok", ("UI 设计师", "UI designer"), app_team, "group", "idle", 2000, None),
         ("workbuddy", ("整理本周会议纪要", "Summarize this week's meetings"), None, "nofolder", "waiting", 18,
          ("找到 5 份纪要，要按项目分组还是按日期？", "Found 5 sets of notes. Group them by project or by date?")),
+        ("cursor", ("迁移到新的路由方案", "Migrate to the new router"), "acme-web", "folder", "running", 14, None),
+        ("cursor", ("修复 CI 里不稳定的测试", "Fix flaky tests in CI"), "acme-api", "folder", "unseen", 40, None),
         ("workbuddy", ("生成季度汇报 PPT", "Build the quarterly review deck"), "reports", "folder", "running", 5, None),
         ("workbuddy", ("对比三家供应商报价", "Compare three vendor quotes"), "reports", "folder", "idle", 300, None),
     ]
@@ -464,6 +522,7 @@ DEEP_LINKS = {
     "claude": (re.compile(r"^local_[A-Za-z0-9-]{1,64}$"), "claude://code/continue?session={id}"),
     "grok": (re.compile(r"^[A-Za-z0-9_-]{1,128}$"), "grokbot://app/v1/agent?id={id}"),
     "workbuddy": (re.compile(r"^[0-9a-f-]{36}$"), "{scheme}://chat/{id}"),
+    "cursor": (re.compile(r"^bc-[0-9a-f-]{36}$"), "cursor://anysphere.cursor-deeplink/background-agent?bcId={id}"),
 }
 
 
@@ -495,7 +554,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.split("?")[0] in ("/", "/index.html"):
             self.send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
-        elif re.fullmatch(r"/icon/(codex|claude|grok|workbuddy)\.png", self.path):
+        elif re.fullmatch(r"/icon/(codex|claude|grok|workbuddy|cursor)\.png", self.path):
             png = app_icon_png(self.path[6:-4])
             if png:
                 self.send(200, png, "image/png")

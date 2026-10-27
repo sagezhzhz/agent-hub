@@ -11,7 +11,7 @@
     --col-wait: #fbf8f1; --col-unseen: #f5f9f4; --col-run: #f4f7fb; --col-idle: #f7f7f5;
     --wait: #c27a0e; --wait-text: #8a5208; --unseen: #1f8a52; --unseen-text: #1a6b43;
     --run: #2563c9; --run-text: #1d55b0; --idle: #8a8a83;
-    --codex: #0f8a6a; --claude: #c4623f; --grok: #4f4fc9; --workbuddy: #2f6fe4;
+    --codex: #0f8a6a; --claude: #c4623f; --grok: #4f4fc9; --workbuddy: #2f6fe4; --cursor: #26251e;
     --focus: #2563c9; --focus-ring: rgba(37, 99, 201, 0.16);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   }
@@ -76,7 +76,7 @@
   .logo { width: 22px; height: 22px; flex-shrink: 0; object-fit: contain; display: block; }
   .chip .logo { width: 16px; height: 16px; }
   .avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
-  .avatar.codex { background: var(--codex); } .avatar.claude { background: var(--claude); } .avatar.grok { background: var(--grok); } .avatar.workbuddy { background: var(--workbuddy); }
+  .avatar.codex { background: var(--codex); } .avatar.claude { background: var(--claude); } .avatar.grok { background: var(--grok); } .avatar.workbuddy { background: var(--workbuddy); } .avatar.cursor { background: var(--cursor); }
   .card .time { margin-left: auto; font-size: 13px; color: var(--faint); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
   .empty { margin: 0; padding: 40px 0; text-align: center; color: var(--faint); }
   .more { border: 0; background: none; color: var(--muted); font-size: 13px; min-height: 44px; cursor: pointer; border-radius: 8px; }
@@ -164,7 +164,7 @@ const STRINGS = {
     showAll: n => `显示全部 ${n} 个`, noMatch: "没有匹配的对话", noneYet: "还没有读到对话",
     demoData: "演示数据",
     readFailed: (app, msg) => `读取 ${app} 失败：${msg}`,
-    emptyHint: ["没有找到 Codex、Claude、Grok Bot 或 WorkBuddy 桌面应用的本地对话。先在这些应用里开始一个对话，或用 ", " 看看演示效果。"],
+    emptyHint: ["没有找到 Codex、Claude、Grok Bot、WorkBuddy 或 Cursor 的本地对话。先在这些应用里开始一个对话，或用 ", " 看看演示效果。"],
     offline: "连接不到本地服务，确认 agent_hub.py 还在运行",
     demoOpen: "演示模式：不会真的打开应用", opened: app => `已在 ${app} 中打开`, openFailed: "打开失败",
     onlyUnseen: "只有「刚完成 · 未查看」的对话需要标为已看", markedSeen: "已标为已看", failed: "操作失败",
@@ -180,7 +180,7 @@ const STRINGS = {
     showAll: n => `Show all ${n}`, noMatch: "No matching conversations", noneYet: "No conversations found yet",
     demoData: "demo data",
     readFailed: (app, msg) => `Couldn't read ${app}: ${msg}`,
-    emptyHint: ["No local conversations found from the Codex, Claude, Grok Bot or WorkBuddy desktop apps. Start one in those apps, or try ", " to see a demo."],
+    emptyHint: ["No local conversations found from Codex, Claude, Grok Bot, WorkBuddy or Cursor. Start one in those apps, or try ", " to see a demo."],
     offline: "Can't reach the local server. Is agent_hub.py still running?",
     demoOpen: "Demo mode: no app is opened", opened: app => `Opened in ${app}`, openFailed: "Couldn't open it",
     onlyUnseen: "Only “Just finished” conversations can be marked as viewed", markedSeen: "Marked as viewed", failed: "Something went wrong",
@@ -207,7 +207,7 @@ document.querySelectorAll("[data-i18n]").forEach(e => { e.textContent = T[e.data
 document.querySelectorAll("[data-i18n-placeholder]").forEach(e => { e.placeholder = T[e.dataset.i18nPlaceholder]; });
 document.querySelectorAll("[data-i18n-aria]").forEach(e => { e.setAttribute("aria-label", T[e.dataset.i18nAria]); });
 
-const APPS = { codex: ["Codex", "C"], claude: ["Claude", "A"], grok: ["Grok Bot", "G"], workbuddy: ["WorkBuddy", "W"] };
+const APPS = { codex: ["Codex", "C"], claude: ["Claude", "A"], grok: ["Grok Bot", "G"], workbuddy: ["WorkBuddy", "W"], cursor: ["Cursor", "Cu"] };
 const COLUMNS = [
   { key: "waiting", cls: "wait", title: T.waiting },
   { key: "unseen", cls: "unseen", title: T.unseen },

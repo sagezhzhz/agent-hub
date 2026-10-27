@@ -2,7 +2,7 @@
 
 [中文说明](README.zh-CN.md)
 
-One local dashboard for every AI agent conversation running in your **desktop apps** — Codex (ChatGPT app), Claude, Grok Bot and WorkBuddy — with click-to-jump back into the exact conversation.
+One local dashboard for every AI agent conversation running in your **desktop apps** — Codex (ChatGPT app), Claude, Grok Bot, WorkBuddy and Cursor cloud agents — with click-to-jump back into the exact conversation.
 
 When you have a dozen agents working across three apps, it's hard to tell which one is waiting for you, which just finished, and which is still running. Agent Hub reads each app's local data, sorts every conversation onto a status board, and opens the right conversation in the right app when you click a card.
 
@@ -21,7 +21,7 @@ Narrow the window and it turns into a single stacked list, so it can sit beside 
 
 - **Status board** — four columns: *Needs you* → *Just finished* (not opened yet) → *Running* → *Recent*.
 - **Project board** — Codex and Claude sessions from the same folder grouped together; Grok bots grouped by their team.
-- **Click to jump** — opens the conversation in its own app via the app's URL scheme (`codex://`, `claude://`, `grokbot://`, `workbuddy-ai://`).
+- **Click to jump** — opens the conversation in its own app via the app's URL scheme (`codex://`, `claude://`, `grokbot://`, `workbuddy-ai://`, `cursor://`).
 - **Fits a sidebar** — 4 columns when wide, 2×2 at half screen, a single stacked column when narrowed beside your agent app.
 - **Keyboard** — arrows to move, `Enter` to open, `Space` to peek at the last message, `U` to mark as viewed, `/` to search.
 - **Real app icons** — each card shows the app's own logo and name, taken from the apps installed on your Mac.
@@ -38,6 +38,7 @@ Narrow the window and it turns into a single stacked list, so it can sit beside 
   - **Claude desktop app**, Code tab sessions (reads `~/Library/Application Support/Claude/claude-code-sessions`)
   - **Grok Bot desktop app** (reads `~/Library/Application Support/Grok Bot`)
   - **WorkBuddy desktop app** (reads `~/.workbuddy-ai`, or `~/.workbuddy` for the China edition)
+  - **Cursor** cloud agents from the Agents window (reads Cursor's cached agent list in `~/Library/Application Support/Cursor`). Local editor chats aren't listed yet.
 
 Apps you don't have are simply skipped.
 
@@ -61,11 +62,11 @@ Options:
 
 ## How statuses are worked out
 
-| Status | Codex | Claude | Grok Bot | WorkBuddy |
-|---|---|---|---|---|
-| Running | last turn started and not finished | you sent a message and the turn hasn't ended | — | task is planning or working |
-| Needs you | not available in Codex's local data | session is waiting for input or confirmation | bot is awaiting your reply | task is waiting for your input |
-| Just finished | finished after you last opened it from Agent Hub | finished after you last focused it in Claude | unread messages, or activity after you last viewed it | completed after you last opened it from Agent Hub |
+| Status | Codex | Claude | Grok Bot | WorkBuddy | Cursor |
+|---|---|---|---|---|---|
+| Running | last turn started and not finished | you sent a message and the turn hasn't ended | — | task is planning or working | agent is creating or running |
+| Needs you | not available in Codex's local data | session is waiting for input or confirmation | bot is awaiting your reply | task is waiting for your input | agent is waiting for you to act |
+| Just finished | finished after you last opened it from Agent Hub | finished after you last focused it in Claude | unread messages, or activity after you last viewed it | completed after you last opened it from Agent Hub | unread, or new activity after you last read it |
 
 Agent Hub remembers which finished conversations you opened (or marked with `U`) in `agent_hub_state.json` next to the script. Besides that, it only writes a cached PNG of each app's icon to `~/Library/Caches/agent-hub`. On first launch only the last 6 hours count as "just finished", so your history doesn't flood the column.
 
@@ -82,7 +83,7 @@ The server listens on `127.0.0.1` only. The page can only ask it to open a conve
 
 ## Not affiliated
 
-Agent Hub is an independent project and is not affiliated with or endorsed by OpenAI, Anthropic, xAI or Tencent. Product names are used only to describe compatibility. No logos are included in this repository: the icons you see are read at runtime from the apps installed on your Mac (a letter badge is shown if an app isn't installed).
+Agent Hub is an independent project and is not affiliated with or endorsed by OpenAI, Anthropic, xAI, Tencent or Anysphere. Product names are used only to describe compatibility. No logos are included in this repository: the icons you see are read at runtime from the apps installed on your Mac (a letter badge is shown if an app isn't installed).
 
 ## License
 
