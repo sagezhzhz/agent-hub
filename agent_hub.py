@@ -286,6 +286,44 @@ def folder_project(cwd):
 
 SOURCES = {"codex": codex_sessions, "claude": claude_sessions, "grok": grok_sessions}
 
+# --demo serves made-up conversations instead of reading the apps: for screenshots
+# and for trying the dashboard on a Mac without any of the apps installed.
+DEMO = "--demo" in sys.argv
+
+
+def demo_sessions():
+    minute = 60 * 1000
+    t = now_ms()
+    rows = [
+        # app, title, project name, project kind, status, minutes ago, preview
+        ("grok", "社媒文案助手", "内容运营小组", "group", "waiting", 12, "这篇的语气对你的账号来说合适吗？要不要我再改得口语一点？"),
+        ("claude", "重构登录流程", "acme-web", "folder", "waiting", 4, "迁移脚本会删除旧的 session 表，确认后我再执行。"),
+        ("claude", "修复深色模式下的对比度问题", "acme-web", "folder", "unseen", 9, ""),
+        ("codex", "为支付模块补充单元测试", "acme-api", "folder", "unseen", 26, ""),
+        ("grok", "竞品调研", "Bot", "bot", "unseen", 55, ""),
+        ("codex", "升级依赖并修复构建", "acme-ios", "folder", "running", 7, ""),
+        ("claude", "设计系统组件文档", "design-system", "folder", "running", 3, ""),
+        ("codex", "整理 TestFlight 发布步骤", "acme-ios", "folder", "idle", 70, ""),
+        ("grok", "周报汇总", "内容运营小组", "group", "idle", 180, ""),
+        ("codex", "优化列表滚动性能", "acme-web", "folder", "idle", 240, ""),
+        ("claude", "API 错误码梳理", "acme-api", "folder", "idle", 420, ""),
+        ("grok", "产品经理", "App 开发小组", "group", "idle", 900, ""),
+        ("codex", "首页加载速度分析", "acme-web", "folder", "idle", 1500, ""),
+        ("grok", "UI 设计师", "App 开发小组", "group", "idle", 2000, ""),
+    ]
+    out = []
+    for i, (app, title, project, kind, status, ago, preview) in enumerate(rows):
+        source = project if kind != "bot" else "Bot"
+        out.append({
+            "app": app, "id": f"demo-{i}", "title": title,
+            "source": source, "projectKey": f"{kind}:{project}", "projectName": "Grok Bot" if kind == "bot" else project,
+            "projectKind": "group" if kind in ("group", "bot") else "folder",
+            "preview": preview, "updatedAt": t - ago * minute,
+            "runningSince": t - ago * minute if status == "running" else 0,
+            "status": status,
+        })
+    return out
+
 # Deep links are built here from validated ids only; the page never supplies a URL.
 DEEP_LINKS = {
     "codex": (re.compile(r"^[0-9a-f-]{36}$"), "codex://threads/{id}"),
@@ -295,6 +333,8 @@ DEEP_LINKS = {
 
 
 def collect():
+    if DEMO:
+        return {"sessions": demo_sessions(), "errors": {}, "generatedAt": now_ms(), "demo": True}
     sessions, errors = [], {}
     for name, fn in SOURCES.items():
         try:
@@ -332,6 +372,8 @@ class Handler(BaseHTTPRequestHandler):
         origin = self.headers.get("Origin", "")
         if origin and origin not in (f"http://{HOST}:{PORT}", f"http://localhost:{PORT}"):
             return self.send(403, {"error": "bad origin"})
+        if DEMO:  # nothing to open or remember for made-up conversations
+            return self.send(200, {"ok": True, "demo": True})
         try:
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
             app = body["app"]
@@ -352,7 +394,7 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     url = f"http://{HOST}:{PORT}/"
-    print(f"Agent Hub 已启动：{url}  （Ctrl+C 退出）")
+    print(f"Agent Hub 已启动{'（演示模式）' if DEMO else ''}：{url}  （Ctrl+C 退出）")
     if "--no-open" not in sys.argv:
         webbrowser.open(url)
     try:

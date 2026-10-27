@@ -356,11 +356,17 @@ function render() {
   meta.replaceChildren(
     el("strong", { class: "w" }, n("waiting") + " 个需要你处理"), " · ",
     el("strong", { class: "u" }, n("unseen") + " 个刚完成未查看"), " · ",
-    n("running") + " 个运行中 · 每 5 秒刷新");
+    n("running") + " 个运行中 · " + (data.demo ? "演示数据" : "每 5 秒刷新"));
   const attention = n("waiting") + n("unseen");
   document.title = (attention ? "(" + attention + ") " : "") + "Agent Hub";
-  document.getElementById("errors").replaceChildren(...Object.entries(data.errors || {}).map(
-    ([app, msg]) => el("div", { class: "err" }, "读取 " + (APPS[app]?.[0] || app) + " 失败：" + msg)));
+  const notices = Object.entries(data.errors || {}).map(
+    ([app, msg]) => el("div", { class: "err" }, "读取 " + (APPS[app]?.[0] || app) + " 失败：" + msg));
+  if (!data.sessions.length && !data.demo && !notices.length) {
+    notices.push(el("p", { class: "meta" },
+      "没有找到 Codex、Claude 或 Grok Bot 桌面应用的本地对话。先在这些应用里开始一个对话，或用 ",
+      el("code", {}, "python3 agent_hub.py --demo"), " 看看演示效果。"));
+  }
+  document.getElementById("errors").replaceChildren(...notices);
 }
 
 // ---------- data + actions
@@ -390,7 +396,7 @@ async function post(path, s) {
 async function openSession(s) {
   try {
     await post("/api/open", s);
-    toast("已在 " + APPS[s.app][0] + " 中打开");
+    toast(data.demo ? "演示模式：不会真的打开应用" : "已在 " + APPS[s.app][0] + " 中打开");
     if (s.status === "unseen") { s.status = "idle"; render(); }
   } catch { toast("打开失败"); }
 }

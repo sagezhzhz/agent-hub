@@ -6,6 +6,17 @@ One local dashboard for every AI agent conversation running in your **desktop ap
 
 When you have a dozen agents working across three apps, it's hard to tell which one is waiting for you, which just finished, and which is still running. Agent Hub reads each app's local data, sorts every conversation onto a status board, and opens the right conversation in the right app when you click a card.
 
+![Status board with four columns: needs you, just finished, running, recent](docs/status-board.png)
+
+<img src="docs/sidebar.png" alt="Narrowed into a sidebar, the columns stack into one list" width="300" align="right">
+
+Narrow the window and it turns into a single stacked list, so it can sit beside your agent app.
+
+*The UI is currently in Chinese. Screenshots use the built-in demo data.*
+
+<br clear="right">
+
+
 ## Features
 
 - **Status board** — four columns: *Needs you* → *Just finished, not viewed* → *Running* → *Recent*.
@@ -43,6 +54,7 @@ Options:
 
 - `AGENT_HUB_PORT=8000 python3 agent_hub.py` — use another port
 - `python3 agent_hub.py --no-open` — don't open the browser automatically
+- `python3 agent_hub.py --demo` — show made-up sample conversations instead of reading your apps (nothing is opened or saved); handy for a first look or for screenshots
 
 ## How statuses are worked out
 

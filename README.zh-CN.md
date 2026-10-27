@@ -6,6 +6,17 @@
 
 同时开着十几个 agent、分散在三个应用里时，很难一眼看出哪个在等你回复、哪个刚做完、哪个还在跑。Agent Hub 读取各应用存在本地的数据，把所有对话按状态排进看板，点击卡片就在对应应用里打开那个对话。
 
+![按状态看板：需要你处理、刚完成 · 未查看、运行中、最近四列](docs/status-board.png)
+
+<img src="docs/sidebar.png" alt="窗口缩窄成侧边栏时，各列竖排成一列" width="300" align="right">
+
+把窗口拖窄，看板会变成一列竖排，可以放在 agent 应用旁边当侧边栏用。
+
+*截图用的是内置的演示数据。*
+
+<br clear="right">
+
+
 ## 功能
 
 - **按状态看板**：四列，依次是「需要你处理 → 刚完成 · 未查看 → 运行中 → 最近」。
@@ -43,6 +54,7 @@ python3 agent_hub.py
 
 - `AGENT_HUB_PORT=8000 python3 agent_hub.py`：换一个端口
 - `python3 agent_hub.py --no-open`：不自动打开浏览器
+- `python3 agent_hub.py --demo`：显示虚构的示例对话，不读取你的应用（点击不会打开应用，也不会记录已读），适合先看看效果或截图
 
 ## 状态是怎么判断的
 
