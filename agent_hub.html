@@ -11,7 +11,6 @@
     --col-wait: #fbf8f1; --col-unseen: #f5f9f4; --col-run: #f4f7fb; --col-idle: #f7f7f5;
     --wait: #c27a0e; --wait-text: #8a5208; --unseen: #1f8a52; --unseen-text: #1a6b43;
     --run: #2563c9; --run-text: #1d55b0; --idle: #8a8a83;
-    --codex: #0f8a6a; --claude: #c4623f; --grok: #4f4fc9; --workbuddy: #2f6fe4; --cursor: #26251e;
     --focus: #2563c9; --focus-ring: rgba(37, 99, 201, 0.16);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   }
@@ -76,7 +75,6 @@
   .logo { width: 22px; height: 22px; flex-shrink: 0; object-fit: contain; display: block; }
   .chip .logo { width: 16px; height: 16px; }
   .avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
-  .avatar.codex { background: var(--codex); } .avatar.claude { background: var(--claude); } .avatar.grok { background: var(--grok); } .avatar.workbuddy { background: var(--workbuddy); } .avatar.cursor { background: var(--cursor); }
   .card .time { margin-left: auto; font-size: 13px; color: var(--faint); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
   .empty { margin: 0; padding: 40px 0; text-align: center; color: var(--faint); }
   .more { border: 0; background: none; color: var(--muted); font-size: 13px; min-height: 44px; cursor: pointer; border-radius: 8px; }
@@ -207,7 +205,10 @@ document.querySelectorAll("[data-i18n]").forEach(e => { e.textContent = T[e.data
 document.querySelectorAll("[data-i18n-placeholder]").forEach(e => { e.placeholder = T[e.dataset.i18nPlaceholder]; });
 document.querySelectorAll("[data-i18n-aria]").forEach(e => { e.setAttribute("aria-label", T[e.dataset.i18nAria]); });
 
-const APPS = { codex: ["Codex", "C"], claude: ["Claude", "A"], grok: ["Grok Bot", "G"], workbuddy: ["WorkBuddy", "W"], cursor: ["Cursor", "Cu"] };
+// app key -> [name, badge letter, badge color]; the server's list (data.apps) replaces this on first load,
+// so supporting a new app only needs a change in agent_hub.py.
+let APPS = {};
+const appInfo = app => APPS[app] || [app, app.slice(0, 1).toUpperCase(), "#77776f"];
 const COLUMNS = [
   { key: "waiting", cls: "wait", title: T.waiting },
   { key: "unseen", cls: "unseen", title: T.unseen },
@@ -308,8 +309,9 @@ function projectLabel(g) {
 // The app's real icon (served from the installed app) plus its name; a letter avatar if there's no icon.
 function appBadge(app, cls = "") {
   const logo = el("img", { class: "logo", src: "/icon/" + app + ".png", alt: "" });
-  logo.addEventListener("error", () => logo.replaceWith(el("span", { class: "avatar " + app, "aria-hidden": "true" }, APPS[app][1])), { once: true });
-  return el("span", { class: ("app-badge " + cls).trim() }, logo, APPS[app][0]);
+  const [name, letter, color] = appInfo(app);
+  logo.addEventListener("error", () => logo.replaceWith(el("span", { class: "avatar", style: "background:" + color, "aria-hidden": "true" }, letter)), { once: true });
+  return el("span", { class: ("app-badge " + cls).trim() }, logo, name);
 }
 
 const titleOf = s => s.title || T.untitled;
@@ -332,7 +334,7 @@ function card(s, { showStatus }) {
   return el("button", {
     type: "button",
     class: "card" + (keyOf(s) === selected ? " sel" : ""),
-    title: T.openIn(APPS[s.app][0]),
+    title: T.openIn(appInfo(s.app)[0]),
     "data-key": keyOf(s),
     onclick: () => { selected = keyOf(s); openSession(s); },
   },
@@ -415,7 +417,7 @@ function render() {
   const attention = n("waiting") + n("unseen");
   document.title = (attention ? "(" + attention + ") " : "") + "Agent Hub";
   const notices = Object.entries(data.errors || {}).map(
-    ([app, msg]) => el("div", { class: "err" }, T.readFailed(APPS[app]?.[0] || app, msg)));
+    ([app, msg]) => el("div", { class: "err" }, T.readFailed(appInfo(app)[0], msg)));
   if (!data.sessions.length && !data.demo && !notices.length) {
     notices.push(el("p", { class: "meta" }, T.emptyHint[0], el("code", {}, "python3 agent_hub.py --demo"), T.emptyHint[1]));
   }
@@ -428,6 +430,7 @@ async function refresh() {
   try {
     const res = await fetch("/api/sessions?lang=" + LANG, { cache: "no-store" });
     data = await res.json();
+    if (data.apps) APPS = Object.fromEntries(Object.entries(data.apps).map(([k, a]) => [k, [a.name, a.letter, a.color]]));
     if (!document.getElementById("peek").open) render();
   } catch {
     document.getElementById("meta").textContent = T.offline;
@@ -449,7 +452,7 @@ async function post(path, s) {
 async function openSession(s) {
   try {
     await post("/api/open", s);
-    toast(data.demo ? T.demoOpen : T.opened(APPS[s.app][0]));
+    toast(data.demo ? T.demoOpen : T.opened(appInfo(s.app)[0]));
     if (s.status === "unseen") { s.status = "idle"; render(); }
   } catch { toast(T.openFailed); }
 }
@@ -473,7 +476,7 @@ function showPeek(s) {
     el("h3", {}, titleOf(s)),
     el("p", {}, s.preview || T.noPreview),
     el("div", { class: "actions" },
-      el("button", { type: "button", class: "btn primary", onclick: () => { dlg.close(); openSession(s); } }, T.openIn(APPS[s.app][0]) + " ↵"),
+      el("button", { type: "button", class: "btn primary", onclick: () => { dlg.close(); openSession(s); } }, T.openIn(appInfo(s.app)[0]) + " ↵"),
       s.status === "unseen" ? el("button", { type: "button", class: "btn", onclick: () => { dlg.close(); markSeen(s); } }, T.markSeen + " U") : null,
       el("button", { type: "button", class: "btn", onclick: () => dlg.close() }, T.close)));
   dlg.showModal();

@@ -32,7 +32,7 @@ Narrow the window and it turns into a single stacked list, so it can sit beside 
 ## Requirements
 
 - macOS
-- Python 3.9+ (the one that ships with Xcode Command Line Tools works)
+- Python 3.8+ (the one that ships with Xcode Command Line Tools works)
 - One or more of:
   - **ChatGPT desktop app** with Codex (reads `~/.codex`)
   - **Claude desktop app**, Code tab sessions (reads `~/Library/Application Support/Claude/claude-code-sessions`)
@@ -56,7 +56,8 @@ You can also double-click **`启动 Agent Hub.command`** in Finder. The first ti
 
 Options:
 
-- `AGENT_HUB_PORT=8000 python3 agent_hub.py` — use another port
+- `python3 agent_hub.py --check` — list what was found for each app (install location, version, link, number of conversations) and exit
+- `AGENT_HUB_PORT=8000 python3 agent_hub.py` — start from another port (if a port is busy, the next free one is used; if Agent Hub is already running, it just opens that one)
 - `python3 agent_hub.py --no-open` — don't open the browser automatically
 - `python3 agent_hub.py --demo` — show made-up sample conversations instead of reading your apps (nothing is opened or saved); handy for a first look or for screenshots
 
@@ -69,6 +70,29 @@ Options:
 | Just finished | finished after you last opened it from Agent Hub | finished after you last focused it in Claude | unread messages, or activity after you last viewed it | completed after you last opened it from Agent Hub | unread, or new activity after you last read it |
 
 Agent Hub remembers which finished conversations you opened (or marked with `U`) in `agent_hub_state.json` next to the script. Besides that, it only writes a cached PNG of each app's icon to `~/Library/Caches/agent-hub`. On first launch only the last 6 hours count as "just finished", so your history doesn't flood the column.
+
+## Troubleshooting
+
+Run the self-check first:
+
+```bash
+python3 agent_hub.py --check
+```
+
+| What you see | What it means |
+|---|---|
+| `app: not found` | The app isn't installed, or Spotlight can't find it. Its conversations can still be listed; only the icon falls back to a letter. |
+| `data: 0 conversations` | Nothing to show yet, or the app keeps its data somewhere else in your version. |
+| `UNRECOGNIZED FORMAT` | The app changed how it stores conversations. The rest of the dashboard still works; please open an issue with the check output. |
+| `link: … NOT registered` | Clicking a card won't reach that app. Usually a different edition of the app; please open an issue. |
+| The page shows "Couldn't read …" | Same as `UNRECOGNIZED FORMAT`, shown in the dashboard. |
+| Double-clicking the `.command` file is blocked | Right-click it → Open, once. |
+
+When something's wrong, [open an issue](https://github.com/SiegoZhang/agent-hub/issues/new/choose) and paste the `--check` output. It contains app versions, install locations and conversation counts, not titles or content.
+
+## Adding another app
+
+Each app is one reader function plus one entry in `APPS` in `agent_hub.py`; the page picks it up automatically. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Limitations
 

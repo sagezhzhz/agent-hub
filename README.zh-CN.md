@@ -32,7 +32,7 @@
 ## 运行环境
 
 - macOS
-- Python 3.9 及以上（Xcode 命令行工具自带的就可以）
+- Python 3.8 及以上（Xcode 命令行工具自带的就可以）
 - 至少装了下面其中一个应用：
   - **ChatGPT 桌面版**里的 Codex（读取 `~/.codex`）
   - **Claude 桌面版** Code 页面的会话（读取 `~/Library/Application Support/Claude/claude-code-sessions`）
@@ -56,7 +56,8 @@ python3 agent_hub.py
 
 可选参数：
 
-- `AGENT_HUB_PORT=8000 python3 agent_hub.py`：换一个端口
+- `python3 agent_hub.py --check`：逐个列出每个应用的安装位置、版本、跳转链接和读到的对话数量，然后退出
+- `AGENT_HUB_PORT=8000 python3 agent_hub.py`：从另一个端口开始（端口被占用时自动用下一个空闲端口；面板已经在运行时，直接打开已有的那个）
 - `python3 agent_hub.py --no-open`：不自动打开浏览器
 - `python3 agent_hub.py --demo`：显示虚构的示例对话，不读取你的应用（点击不会打开应用，也不会记录已读），适合先看看效果或截图
 
@@ -69,6 +70,29 @@ python3 agent_hub.py
 | 刚完成 · 未查看 | 在你上次从面板打开之后又完成了 | 在你上次在 Claude 里查看之后又完成了 | 有未读消息，或在你上次查看之后有新动态 | 在你上次从面板打开之后又完成了 | 未读，或在你上次查看之后有新动态 |
 
 你在面板里打开过（或按 `U` 标为已看）的对话，会记在脚本旁边的 `agent_hub_state.json` 里，此外只会把各应用图标转成 PNG 缓存到 `~/Library/Caches/agent-hub`。第一次启动时，只把最近 6 小时内完成的对话算作未查看，避免历史对话一下子全涌进这一列。
+
+## 排查问题
+
+先运行自检：
+
+```bash
+python3 agent_hub.py --check
+```
+
+| 看到的结果 | 含义 |
+|---|---|
+| `app: not found` | 没装这个应用，或者 Spotlight 找不到它。对话照样能列出，只是图标退回字母徽标 |
+| `data: 0 conversations` | 还没有对话，或者你这个版本的应用把数据存在别处 |
+| `UNRECOGNIZED FORMAT` | 应用改了存储格式。面板其他部分照常工作，请提 Issue 并附上自检输出 |
+| `link: … NOT registered` | 点卡片跳不到这个应用，通常是应用的版本不同，请提 Issue |
+| 页面顶部显示「读取 … 失败」 | 和 `UNRECOGNIZED FORMAT` 一样，只是显示在页面上 |
+| 双击 `.command` 文件被拦截 | 右键选「打开」一次即可 |
+
+碰到问题时请[提 Issue](https://github.com/SiegoZhang/agent-hub/issues/new/choose)，并贴上 `--check` 的输出。输出里只有应用版本、安装位置和对话数量，不包含对话标题或内容。
+
+## 接入更多应用
+
+每个应用就是 `agent_hub.py` 里的一个读取函数，加上 `APPS` 里的一项配置，页面会自动显示，详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 已知限制
 
