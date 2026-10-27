@@ -178,22 +178,40 @@ def codex_db():
     return max(found)[1] if found else None
 
 
-def codex_turn_state(rollout_path):
-    """Last turn lifecycle event in the rollout file and when it happened."""
+def codex_turn_state(rollout_path, chunk=256 * 1024, max_scan=16 * 1024 * 1024):
+    """Last turn lifecycle event in the rollout file and when it happened.
+
+    Reads backwards in chunks: a busy turn can write megabytes of tool output after
+    its task_started line, so a fixed-size tail would miss it.
+    """
     try:
-        with open(rollout_path, "rb") as f:
-            f.seek(0, os.SEEK_END)
-            f.seek(max(0, f.tell() - 256 * 1024))
-            tail = f.read().decode("utf-8", "replace")
+        f = open(rollout_path, "rb")
     except (OSError, TypeError):
         return None, 0
-    for line in reversed(tail.splitlines()):
-        if '"event_msg"' not in line:
-            continue
-        m = TURN_EVENT.search(line)
-        if m:
-            return m.group(2), iso_ms(m.group(1))
+    with f:
+        end = f.seek(0, os.SEEK_END)
+        pos, carry = end, b""
+        while pos > 0 and end - pos < max_scan:
+            start = max(0, pos - chunk)
+            f.seek(start)
+            block = f.read(pos - start) + carry
+            lines = block.split(b"\n")
+            carry = lines[0] if start > 0 else b""  # may be cut mid-line; finish it next round
+            for raw in reversed(lines[1:] if start > 0 else lines):
+                if b'"event_msg"' not in raw:
+                    continue
+                m = TURN_EVENT.search(raw.decode("utf-8", "replace"))
+                if m:
+                    return m.group(2), iso_ms(m.group(1))
+            pos = start
     return None, 0
+
+
+def mtime_ms(path):
+    try:
+        return int(os.path.getmtime(path) * 1000)
+    except (OSError, TypeError):
+        return 0
 
 
 def codex_sessions():
@@ -227,8 +245,10 @@ def codex_sessions():
     for tid, title, cwd, updated_ms, rollout, preview in rows:
         updated_ms = updated_ms or 0
         state, state_at = codex_turn_state(rollout)
+        # The rollout file is written all through a turn; the threads row may not be.
+        last_write = max(mtime_ms(rollout), updated_ms)
         running_since = 0
-        if state == "task_started" and now_ms() - updated_ms < RUNNING_STALE_SEC * 1000:
+        if state == "task_started" and now_ms() - last_write < RUNNING_STALE_SEC * 1000:
             status, running_since = "running", state_at or updated_ms
         else:
             status = "idle"
@@ -245,6 +265,50 @@ def codex_sessions():
 # ---------------------------------------------------------------- Claude (Code tab)
 
 CLAUDE_SESSIONS = APP_SUPPORT / "Claude" / "claude-code-sessions"
+CLAUDE_PROJECTS = Path(os.environ.get("CLAUDE_CONFIG_DIR") or HOME / ".claude") / "projects"
+TURN_OVER = ("end_turn", "stop_sequence", "max_tokens", "refusal")
+
+
+def tail_lines(path, size=512 * 1024):
+    try:
+        with open(path, "rb") as f:
+            end = f.seek(0, os.SEEK_END)
+            f.seek(max(0, end - size))
+            data = f.read()
+    except OSError:
+        return []
+    lines = data.split(b"\n")
+    return lines[1:] if end > size else lines  # the first line may be cut
+
+
+def claude_turn_open(cli_session_id):
+    """Whether the session's own transcript ends mid-turn: True / False, or None if there's no transcript.
+
+    The desktop app's session file moves its timestamps and summary during a turn too, but
+    the Claude Code transcript only gets an assistant message with a final stop_reason once
+    the turn is over. Anything after that (a prompt, a tool call, a tool result) means it's busy.
+    """
+    if not cli_session_id:
+        return None
+    hits = list(CLAUDE_PROJECTS.glob(f"*/{cli_session_id}.jsonl"))
+    if not hits:
+        return None
+    for raw in reversed(tail_lines(hits[0])):
+        try:
+            e = json.loads(raw)
+        except ValueError:
+            continue
+        kind = e.get("type")
+        msg = e.get("message") if isinstance(e.get("message"), dict) else {}
+        if kind == "assistant":
+            return msg.get("stop_reason") not in TURN_OVER
+        if kind == "user":
+            content = msg.get("content")
+            text = content if isinstance(content, str) else " ".join(
+                c.get("text", "") for c in content or [] if isinstance(c, dict))
+            return not text.lstrip().startswith("[Request interrupted")
+        # system notes, summaries, snapshots and the like say nothing about the turn
+    return None
 
 
 def claude_sessions():
@@ -261,11 +325,16 @@ def claude_sessions():
         user_at = d.get("latestUserFrameAt") or 0
         edge_at = d.get("lastTurnEdgeAt") or 0
         summary = d.get("postTurnSummary") if isinstance(d.get("postTurnSummary"), dict) else {}
+        last_write = max(mtime_ms(path), d.get("lastActivityAt") or 0, edge_at, user_at)
+        mid_turn = claude_turn_open(d.get("cliSessionId"))
+        if mid_turn is None:  # no transcript to go by: a message sent after the last turn edge
+            mid_turn = user_at > edge_at
         running_since = 0
-        if user_at > edge_at and now_ms() - user_at < RUNNING_STALE_SEC * 1000:
-            status, running_since = "running", user_at
-        elif (d.get("interruptedAwaitingPerson") or summary.get("needs_action")
-              or (waiting_dir.is_dir() and any(sid in p.name for p in waiting_dir.iterdir()))):
+        if d.get("interruptedAwaitingPerson") or (waiting_dir.is_dir() and any(sid in p.name for p in waiting_dir.iterdir())):
+            status = "waiting"  # paused mid-turn on a question or a permission prompt
+        elif mid_turn and now_ms() - last_write < RUNNING_STALE_SEC * 1000:
+            status, running_since = "running", user_at or last_write
+        elif summary.get("needs_action"):
             status = "waiting"
         else:
             # Claude records when you last looked at the session; finished after that = unseen.
