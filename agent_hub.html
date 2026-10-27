@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Hub</title>
+<style>
+  :root {
+    --bg: #ffffff; --card: #ffffff; --text: #1d1d1b; --muted: #66665f; --faint: #77776f;
+    --line: #ebebe6; --chip: #f0f0ec; --chip-on: #1d1d1b; --chip-on-text: #fff; --soft: #f7f7f4;
+    --col-wait: #fbf8f1; --col-unseen: #f5f9f4; --col-run: #f4f7fb; --col-idle: #f7f7f5;
+    --wait: #c27a0e; --wait-text: #8a5208; --unseen: #1f8a52; --unseen-text: #1a6b43;
+    --run: #2563c9; --run-text: #1d55b0; --idle: #8a8a83;
+    --codex: #0f8a6a; --claude: #c4623f; --grok: #4f4fc9;
+    --focus: #2563c9; --focus-ring: rgba(37, 99, 201, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161615; --card: #22221f; --text: #ececea; --muted: #a3a39c; --faint: #8f8f88;
+      --line: #32322e; --chip: #2a2a27; --chip-on: #ececea; --chip-on-text: #161615; --soft: #2a2a27;
+      --col-wait: #221f18; --col-unseen: #1a211b; --col-run: #1a1e25; --col-idle: #1d1d1b;
+      --wait: #e8a43a; --wait-text: #e8a43a; --unseen: #4cc184; --unseen-text: #5fcf93;
+      --run: #5b9cf0; --run-text: #7db0f3; --idle: #77776f;
+      --focus: #5b9cf0; --focus-ring: rgba(91, 156, 240, 0.25);
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+  button { font: inherit; color: inherit; }
+  .wrap { padding: 24px 24px 28px; display: flex; flex-direction: column; gap: 18px; min-height: 100vh; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+  .head-text { display: flex; flex-direction: column; gap: 2px; flex-grow: 1; }
+  h1 { margin: 0; font-size: 22px; letter-spacing: -0.01em; }
+  .meta { margin: 0; font-size: 13px; color: var(--muted); }
+  .meta strong.w { color: var(--wait-text); } .meta strong.u { color: var(--unseen-text); }
+  .seg { display: flex; background: var(--chip); border-radius: 9px; padding: 3px; gap: 2px; }
+  .seg button { border: 0; background: none; color: var(--muted); font-size: 13px; padding: 6px 14px; border-radius: 7px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--card); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .chip { border: 0; background: var(--chip); border-radius: 999px; padding: 6px 13px; font-size: 13px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; min-height: 32px; }
+  .chip[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-text); }
+  .chip .n { opacity: 0.6; font-variant-numeric: tabular-nums; }
+  .search { margin-left: auto; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--card); border-radius: 9px; padding: 5px 10px; width: 240px; max-width: 100%; }
+  .search input { border: 0; outline: none; background: none; font: inherit; font-size: 13px; color: var(--text); flex-grow: 1; min-width: 0; }
+  kbd { font: inherit; font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; background: var(--card); }
+  .board-scroll { flex-grow: 1; }
+  /* Status board: 4 columns when wide, 2×2 when medium, one stack when narrow (see media queries). */
+  .board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .board .col { min-height: calc(100vh - 190px); }
+  /* Project board wraps into as many columns as fit, so it never scrolls sideways. */
+  .board.projects { grid-template-columns: repeat(auto-fill, minmax(min(100%, 272px), 1fr)); }
+  .board.projects .col { min-height: 0; }
+  .col { border-radius: 14px; padding: 12px 10px 14px; background: var(--col-idle); min-width: 0; }
+  .col.wait { background: var(--col-wait); } .col.unseen { background: var(--col-unseen); } .col.run { background: var(--col-run); }
+  .col-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 12px; }
+  .col-head h2 { margin: 0; font-size: 15px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .col-head .n { font-size: 14px; color: var(--faint); }
+  .col-head svg { flex-shrink: 0; }
+  .cards { display: flex; flex-direction: column; gap: 10px; }
+  .card {
+    display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; background: var(--card);
+    border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 10px; padding: 14px 16px; cursor: pointer;
+  }
+  .card:hover { border-color: color-mix(in srgb, var(--focus) 35%, var(--line)); }
+  .card.sel, .card:focus-visible { outline: none; border-color: var(--focus); box-shadow: 0 0 0 3px var(--focus-ring); }
+  .card .src { font-size: 12.5px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+  .card .src .st { font-weight: 600; }
+  .card .ttl { font-size: 16px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+  .card .pv { font-size: 13px; color: var(--muted); line-height: 1.5; background: var(--soft); border-radius: 8px; padding: 8px 10px;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .foot { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .avatar.codex { background: var(--codex); } .avatar.claude { background: var(--claude); } .avatar.grok { background: var(--grok); }
+  .card .time { margin-left: auto; font-size: 13px; color: var(--faint); white-space: nowrap; }
+  .empty { margin: 0; padding: 40px 0; text-align: center; color: var(--faint); }
+  .more { border: 0; background: none; color: var(--muted); font-size: 13px; min-height: 44px; cursor: pointer; border-radius: 8px; }
+  .more:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
+  .t-wait { color: var(--wait-text); } .t-unseen { color: var(--unseen-text); } .t-run { color: var(--run-text); }
+  .spin { animation: spin 1.1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  footer { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .err { color: #c62f2f; font-size: 12px; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(16px); opacity: 0; background: var(--chip-on); color: var(--chip-on-text); padding: 7px 14px; border-radius: 8px; font-size: 13px; transition: 0.2s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+  dialog { border: 0; border-radius: 14px; padding: 0; width: min(520px, calc(100vw - 32px)); background: var(--card); color: var(--text); box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+  dialog::backdrop { background: rgba(0,0,0,0.3); }
+  .peek { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .peek h3 { margin: 0; font-size: 18px; }
+  .peek p { margin: 0; background: var(--soft); border-radius: 10px; padding: 12px 14px; line-height: 1.6; white-space: pre-wrap; }
+  .peek .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn { min-height: 44px; border-radius: 9px; padding: 0 16px; cursor: pointer; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--card); }
+  .btn.primary { background: var(--chip-on); color: var(--chip-on-text); border-color: var(--chip-on); font-weight: 600; flex-grow: 1; justify-content: center; }
+  /* Medium (half a screen): status columns go 2×2. */
+  @media (max-width: 1100px) {
+    .board:not(.projects) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .board .col { min-height: 0; }
+    .search { width: 200px; }
+  }
+  /* Narrow (a sidebar next to the agent app): everything stacks into one column. */
+  @media (max-width: 620px) {
+    .wrap { padding: 14px 12px 18px; gap: 12px; }
+    h1 { font-size: 18px; }
+    .meta { font-size: 12px; }
+    .seg button { padding: 5px 10px; font-size: 12.5px; }
+    .toolbar { gap: 6px; }
+    .chip { padding: 4px 10px; font-size: 12.5px; min-height: 28px; }
+    .search { margin-left: 0; width: 100%; order: -1; }
+    .search kbd { display: none; }
+    .board:not(.projects), .board.projects { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    .col { padding: 8px 8px 10px; border-radius: 12px; }
+    .col-head { padding: 2px 4px 8px; }
+    .col-head h2 { font-size: 14px; }
+    .cards { gap: 8px; }
+    .card { padding: 10px 12px; gap: 4px; }
+    .card .ttl { font-size: 14.5px; }
+    .card .src { font-size: 12px; }
+    .card .pv { font-size: 12.5px; padding: 6px 8px; -webkit-line-clamp: 2; }
+    .avatar { width: 20px; height: 20px; font-size: 10px; }
+    .card .foot { font-size: 13px; }
+    .card .time { font-size: 12px; }
+    .empty { padding: 10px 0 4px; font-size: 13px; }
+    footer { display: none; }
+  }
+  /* Very narrow: drop the app name next to the avatar, the avatar letter is enough. */
+  @media (max-width: 360px) {
+    .card .foot .app-name { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="head-text">
+      <h1>Agent Hub</h1>
+      <p class="meta" id="meta">加载中…</p>
+    </div>
+    <div class="seg" role="group" aria-label="视图">
+      <button type="button" data-view="status">按状态</button>
+      <button type="button" data-view="project">按项目</button>
+    </div>
+  </header>
+  <div class="toolbar">
+    <div id="filters" style="display: contents"></div>
+    <label class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="color: var(--muted)"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="search" type="search" placeholder="搜索" aria-label="搜索对话">
+      <kbd>/</kbd>
+    </label>
+  </div>
+  <div id="errors"></div>
+  <div class="board-scroll"><div class="board" id="board"></div></div>
+  <footer>
+    <span>← → 切换列</span><span>↑ ↓ 选择</span><span>↵ 跳转到应用</span><span>空格 预览</span><span>U 标为已看</span><span>/ 搜索</span>
+  </footer>
+</div>
+
+<dialog id="peek"><div class="peek" id="peek-body"></div></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const APPS = { codex: ["Codex", "C"], claude: ["Claude", "A"], grok: ["Grok Bot", "G"] };
+const COLUMNS = [
+  { key: "waiting", cls: "wait", title: "需要你处理" },
+  { key: "unseen", cls: "unseen", title: "刚完成 · 未查看" },
+  { key: "running", cls: "run", title: "运行中" },
+  { key: "idle", cls: "idle", title: "最近" },
+];
+const STATUS_TEXT = { waiting: "需要你处理", unseen: "刚完成 · 未查看", running: "运行中", idle: "空闲" };
+const STATUS_RANK = { waiting: 0, unseen: 1, running: 2, idle: 3 };
+const PAGE_SIZE = { idle: 20, project: 8 };
+// In a narrow sidebar the columns stack, so each one shows fewer cards before "显示全部".
+const narrow = matchMedia("(max-width: 620px)");
+const pageSize = key => narrow.matches ? { idle: 8, project: 3 }[key] : PAGE_SIZE[key];
+
+let data = { sessions: [] };
+let view = "status";
+let filter = "all";
+let query = "";
+let expanded = new Set();   // column keys showing all cards
+let selected = null;        // "app:id"
+let columnsShown = [];      // [[session, ...], ...] as rendered, for keyboard nav
+
+const store = {
+  get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+
+// ---------- small DOM helpers
+
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  }
+  for (const k of kids) if (k != null && k !== false) e.append(k);
+  return e;
+}
+
+function svg(markup, size) {
+  const t = document.createElement("template");
+  t.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" aria-hidden="true">${markup}</svg>`;
+  return t.content.firstChild;
+}
+
+function statusIcon(status, size = 16) {
+  switch (status) {
+    case "waiting": return svg('<circle cx="12" cy="12" r="8.5" stroke="var(--wait)" stroke-width="2.2"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="var(--wait)"/>', size);
+    case "unseen": return svg('<circle cx="12" cy="12" r="8.5" stroke="var(--unseen)" stroke-width="2.2"/><circle cx="12" cy="12" r="4.5" fill="var(--unseen)"/>', size);
+    case "running": { const s = svg('<circle cx="12" cy="12" r="8" stroke="var(--run)" stroke-opacity="0.22" stroke-width="2.6"/><path d="M20 12a8 8 0 0 0-8-8" stroke="var(--run)" stroke-width="2.6" stroke-linecap="round"/>', size); s.classList.add("spin"); return s; }
+    default: return svg('<circle cx="12" cy="12" r="8.5" stroke="var(--idle)" stroke-width="2" stroke-dasharray="2.6 2.6"/>', size);
+  }
+}
+
+const folderIcon = () => svg('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="var(--muted)" stroke-width="2" stroke-linejoin="round"/>', 16);
+const groupIcon = () => svg('<circle cx="9" cy="9" r="3.2" stroke="var(--muted)" stroke-width="2"/><circle cx="16.5" cy="10" r="2.6" stroke="var(--muted)" stroke-width="2"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M15 14.6c2.6-.3 4.8 1 5.5 3.9" stroke="var(--muted)" stroke-width="2" stroke-linecap="round"/>', 16);
+
+// ---------- formatting
+
+function ago(ms) {
+  if (!ms) return "";
+  const s = Math.max(0, (Date.now() - ms) / 1000);
+  if (s < 60) return "刚刚";
+  if (s < 3600) return Math.floor(s / 60) + " 分钟前";
+  if (s < 86400) return Math.floor(s / 3600) + " 小时前";
+  if (s < 86400 * 2) return "昨天";
+  if (s < 86400 * 7) return Math.floor(s / 86400) + " 天前";
+  const d = new Date(ms);
+  return (d.getMonth() + 1) + "/" + d.getDate();
+}
+
+function duration(ms) {
+  const m = Math.max(1, Math.round((Date.now() - ms) / 60000));
+  return m < 60 ? m + " 分钟" : Math.floor(m / 60) + " 小时 " + (m % 60) + " 分钟";
+}
+
+function timeLabel(s) {
+  if (s.status === "running" && s.runningSince) return "已运行 " + duration(s.runningSince);
+  if (s.status === "unseen") return "完成于 " + ago(s.updatedAt);
+  return "更新于 " + ago(s.updatedAt);
+}
+
+const keyOf = s => s.app + ":" + s.id;
+
+// ---------- rendering
+
+function visibleSessions() {
+  const q = query.trim().toLowerCase();
+  return data.sessions
+    .filter(s => filter === "all" || s.app === filter)
+    .filter(s => !q || (s.title + " " + s.source + " " + s.projectName + " " + s.preview).toLowerCase().includes(q))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+function card(s, { showStatus }) {
+  const src = el("span", { class: "src" });
+  if (showStatus) {
+    src.append(statusIcon(s.status, 13), el("span", { class: "st " + ({ waiting: "t-wait", unseen: "t-unseen", running: "t-run" }[s.status] || "") }, STATUS_TEXT[s.status]));
+  } else {
+    src.append(s.source);
+  }
+  const c = el("button", {
+    type: "button",
+    class: "card" + (keyOf(s) === selected ? " sel" : ""),
+    title: "在 " + APPS[s.app][0] + " 中打开",
+    "data-key": keyOf(s),
+    onclick: () => { selected = keyOf(s); openSession(s); },
+  },
+    src,
+    el("span", { class: "ttl" }, s.title),
+    s.status === "waiting" && s.preview ? el("span", { class: "pv" }, s.preview) : null,
+    el("span", { class: "foot" },
+      el("span", { class: "avatar " + s.app }, APPS[s.app][1]),
+      el("span", { class: "app-name" }, APPS[s.app][0]),
+      el("span", { class: "time" }, timeLabel(s))),
+  );
+  return c;
+}
+
+function column({ key, cls, title, icon, items, limit, showStatus }) {
+  const shown = limit && !expanded.has(key) ? items.slice(0, limit) : items;
+  columnsShown.push(shown);
+  const cards = el("div", { class: "cards" }, ...shown.map(s => card(s, { showStatus })));
+  if (shown.length < items.length) {
+    cards.append(el("button", { type: "button", class: "more", onclick: () => { expanded.add(key); render(); } }, "显示全部 " + items.length + " 个"));
+  }
+  return el("section", { class: "col " + cls, "aria-label": title },
+    el("div", { class: "col-head" }, icon, el("h2", {}, title), el("span", { class: "n" }, String(items.length))),
+    items.length ? cards : el("p", { class: "empty" }, "无对话"));
+}
+
+function renderStatusBoard(board, items) {
+  board.className = "board";
+  for (const c of COLUMNS) {
+    board.append(column({
+      key: "status:" + c.key, cls: c.cls, title: c.title, icon: statusIcon(c.key),
+      items: items.filter(s => s.status === c.key),
+      limit: c.key === "idle" ? pageSize("idle") : 0, showStatus: false,
+    }));
+  }
+}
+
+function renderProjectBoard(board, items) {
+  board.className = "board projects";
+  const groups = new Map();
+  for (const s of items) {
+    if (!groups.has(s.projectKey)) groups.set(s.projectKey, { name: s.projectName, kind: s.projectKind, items: [] });
+    groups.get(s.projectKey).items.push(s);
+  }
+  const rank = g => Math.min(...g.items.map(s => STATUS_RANK[s.status]));
+  const sorted = [...groups.entries()].sort(([, a], [, b]) => rank(a) - rank(b) || b.items[0].updatedAt - a.items[0].updatedAt);
+  for (const [key, g] of sorted) {
+    g.items.sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || b.updatedAt - a.updatedAt);
+    board.append(column({
+      key: "project:" + key, cls: "idle", title: g.name,
+      icon: g.kind === "group" ? groupIcon() : folderIcon(),
+      items: g.items, limit: pageSize("project"), showStatus: true,
+    }));
+  }
+  if (!sorted.length) board.append(el("p", { class: "empty" }, query ? "没有匹配的对话" : "还没有读到对话"));
+}
+
+function renderFilters() {
+  const box = document.getElementById("filters");
+  box.replaceChildren();
+  const counts = { all: data.sessions.length };
+  for (const s of data.sessions) counts[s.app] = (counts[s.app] || 0) + 1;
+  for (const k of ["all", "codex", "claude", "grok"]) {
+    box.append(el("button", {
+      type: "button", class: "chip", "aria-pressed": String(filter === k),
+      onclick: () => { filter = k; store.set("hub.filter", k); render(); },
+    }, k === "all" ? "全部" : APPS[k][0], el("span", { class: "n" }, String(counts[k] || 0))));
+  }
+}
+
+function render() {
+  const keepScroll = document.querySelector(".board-scroll").scrollLeft;
+  renderFilters();
+  document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+
+  const items = visibleSessions();
+  const board = document.getElementById("board");
+  board.replaceChildren();
+  columnsShown = [];
+  if (view === "project") renderProjectBoard(board, items); else renderStatusBoard(board, items);
+  document.querySelector(".board-scroll").scrollLeft = keepScroll;
+
+  const n = st => data.sessions.filter(s => s.status === st).length;
+  const meta = document.getElementById("meta");
+  meta.replaceChildren(
+    el("strong", { class: "w" }, n("waiting") + " 个需要你处理"), " · ",
+    el("strong", { class: "u" }, n("unseen") + " 个刚完成未查看"), " · ",
+    n("running") + " 个运行中 · 每 5 秒刷新");
+  const attention = n("waiting") + n("unseen");
+  document.title = (attention ? "(" + attention + ") " : "") + "Agent Hub";
+  document.getElementById("errors").replaceChildren(...Object.entries(data.errors || {}).map(
+    ([app, msg]) => el("div", { class: "err" }, "读取 " + (APPS[app]?.[0] || app) + " 失败：" + msg)));
+}
+
+// ---------- data + actions
+
+async function refresh() {
+  try {
+    const res = await fetch("/api/sessions", { cache: "no-store" });
+    data = await res.json();
+    if (!document.getElementById("peek").open) render();
+  } catch {
+    document.getElementById("meta").textContent = "连接不到本地服务，确认 agent_hub.py 还在运行";
+  }
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 1600);
+}
+
+async function post(path, s) {
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ app: s.app, id: s.id }) });
+  if (!res.ok) throw new Error(res.status);
+}
+
+async function openSession(s) {
+  try {
+    await post("/api/open", s);
+    toast("已在 " + APPS[s.app][0] + " 中打开");
+    if (s.status === "unseen") { s.status = "idle"; render(); }
+  } catch { toast("打开失败"); }
+}
+
+async function markSeen(s) {
+  if (s.status !== "unseen") return toast("只有「刚完成 · 未查看」的对话需要标为已看");
+  try { await post("/api/seen", s); s.status = "idle"; render(); toast("已标为已看"); }
+  catch { toast("操作失败"); }
+}
+
+function selectedSession() {
+  return data.sessions.find(s => keyOf(s) === selected);
+}
+
+function showPeek(s) {
+  const dlg = document.getElementById("peek");
+  document.getElementById("peek-body").replaceChildren(
+    el("div", { class: "src", style: "display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)" },
+      el("span", { class: "avatar " + s.app }, APPS[s.app][1]), APPS[s.app][0] + " · " + s.source,
+      el("span", { style: "margin-left:auto;display:flex;gap:6px;align-items:center" }, statusIcon(s.status, 13), STATUS_TEXT[s.status])),
+    el("h3", {}, s.title),
+    el("p", {}, s.preview || "（没有可预览的内容）"),
+    el("div", { class: "actions" },
+      el("button", { type: "button", class: "btn primary", onclick: () => { dlg.close(); openSession(s); } }, "在 " + APPS[s.app][0] + " 中打开 ↵"),
+      s.status === "unseen" ? el("button", { type: "button", class: "btn", onclick: () => { dlg.close(); markSeen(s); } }, "标为已看 U") : null,
+      el("button", { type: "button", class: "btn", onclick: () => dlg.close() }, "关闭")));
+  dlg.showModal();
+}
+
+// ---------- keyboard
+
+function moveSelection(dx, dy) {
+  const cols = columnsShown.map(c => c.map(keyOf));
+  if (!cols.some(c => c.length)) return;
+  let ci = cols.findIndex(c => c.includes(selected));
+  let ri = ci >= 0 ? cols[ci].indexOf(selected) : -1;
+  if (ci < 0) { ci = cols.findIndex(c => c.length); ri = 0; }
+  else if (dx) {
+    let n = ci;
+    do { n += dx; } while (n >= 0 && n < cols.length && !cols[n].length);
+    if (n >= 0 && n < cols.length) { ci = n; ri = Math.min(ri, cols[ci].length - 1); }
+  } else {
+    ri = Math.max(0, Math.min(cols[ci].length - 1, ri + dy));
+  }
+  selected = cols[ci][ri];
+  document.querySelectorAll(".card.sel").forEach(c => c.classList.remove("sel"));
+  const node = document.querySelector(`.card[data-key="${CSS.escape(selected)}"]`);
+  if (node) { node.classList.add("sel"); node.scrollIntoView({ block: "nearest", inline: "nearest" }); }
+}
+
+document.addEventListener("keydown", e => {
+  if (document.getElementById("peek").open) return;
+  const inSearch = document.activeElement?.id === "search";
+  if (inSearch) { if (e.key === "Escape") document.activeElement.blur(); return; }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const s = selectedSession();
+  switch (e.key) {
+    case "/": e.preventDefault(); document.getElementById("search").focus(); break;
+    case "ArrowDown": e.preventDefault(); moveSelection(0, 1); break;
+    case "ArrowUp": e.preventDefault(); moveSelection(0, -1); break;
+    case "ArrowRight": e.preventDefault(); moveSelection(1, 0); break;
+    case "ArrowLeft": e.preventDefault(); moveSelection(-1, 0); break;
+    case "Enter": if (s && !document.activeElement?.classList.contains("card")) { e.preventDefault(); openSession(s); } break;
+    case " ": if (s) { e.preventDefault(); showPeek(s); } break;
+    case "u": case "U": if (s) markSeen(s); break;
+  }
+});
+
+document.getElementById("search").addEventListener("input", e => { query = e.target.value; render(); });
+narrow.addEventListener("change", render);
+document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+  view = b.dataset.view; store.set("hub.view", view); render();
+}));
+
+view = store.get("hub.view", "status");
+filter = store.get("hub.filter", "all");
+refresh();
+setInterval(() => { if (!document.hidden) refresh(); }, 5000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+</script>
+</body>
+</html>

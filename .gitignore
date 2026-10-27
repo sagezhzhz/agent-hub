@@ -1,0 +1,8 @@
+# Per-user state: which conversations you've viewed
+agent_hub_state.json
+agent_hub_state.tmp
+
+# Local tooling
+.claude/
+__pycache__/
+.DS_Store
