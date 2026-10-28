@@ -23,6 +23,7 @@ Narrow the window and it turns into a single stacked list, so it can sit beside 
 - **Project board** — Codex and Claude sessions from the same folder grouped together; Grok bots grouped by their team.
 - **Click to jump** — opens the conversation in its own app via the app's URL scheme (`codex://`, `claude://`, `grokbot://`, `workbuddy-ai://`, `cursor://`).
 - **Fits a sidebar** — 4 columns when wide, 2×2 at half screen, a single stacked column when narrowed beside your agent app.
+- **Notch island** — a Dynamic Island–style strip around the MacBook notch (top of the menu bar on other Macs) shows how many agents need you, pops open when one starts waiting or finishes, and lists them on hover; click a row to jump in. Needs Xcode Command Line Tools and macOS 12+; it's compiled once on first launch.
 - **Keyboard** — arrows to move, `Enter` to open, `Space` to peek at the last message, `U` to mark as viewed, `/` to search.
 - **Real app icons** — each card shows the app's own logo and name, taken from the apps installed on your Mac.
 - **Private and read-only** — everything stays on your Mac. It never modifies the apps' data and makes no network requests.
@@ -59,6 +60,7 @@ Options:
 - `python3 agent_hub.py --check` — list what was found for each app (install location, version, link, number of conversations) and exit
 - `AGENT_HUB_PORT=8000 python3 agent_hub.py` — start from another port (if a port is busy, the next free one is used; if Agent Hub is already running, it just opens that one)
 - `python3 agent_hub.py --no-open` — don't open the browser automatically
+- `python3 agent_hub.py --no-island` — don't show the notch island
 - `python3 agent_hub.py --demo` — show made-up sample conversations instead of reading your apps (nothing is opened or saved); handy for a first look or for screenshots
 
 ## How statuses are worked out

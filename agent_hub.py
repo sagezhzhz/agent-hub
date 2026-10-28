@@ -12,11 +12,13 @@ Python 3.8+ standard library only.
     python3 agent_hub.py --check    report what was found for each app, then exit
     python3 agent_hub.py --demo     show made-up conversations instead of your apps
     python3 agent_hub.py --no-open  don't open the browser
+    python3 agent_hub.py --no-island  don't show the notch island (agent_hub_island.swift)
 
 To support another app, write a reader that returns session dicts (see
 CONTRIBUTING.md) and add an entry to APPS at the bottom of the readers.
 """
 
+import atexit
 import sys
 
 if sys.version_info < (3, 8):
@@ -47,6 +49,8 @@ APP_SUPPORT = HOME / "Library" / "Application Support"
 PAGE = Path(__file__).with_name("agent_hub.html")
 STATE_FILE = Path(__file__).with_name("agent_hub_state.json")
 ICON_CACHE = HOME / "Library" / "Caches" / "agent-hub"
+ISLAND_SRC = Path(__file__).with_name("agent_hub_island.swift")
+ISLAND_BIN = ICON_CACHE / "agent-hub-island"
 
 LIMIT_PER_APP = 80
 RUNNING_STALE_SEC = 30 * 60   # a "started" turn older than this is treated as stale, not running
@@ -812,6 +816,25 @@ def bind():
     sys.exit(f"No free port between {DEFAULT_PORT} and {DEFAULT_PORT + 19}. Set AGENT_HUB_PORT to another number.")
 
 
+# ---------------------------------------------------------------- notch island
+
+def start_island():
+    """Compile (first run, or after the source changes) and start the notch island. Needs Xcode Command Line Tools and macOS 12+."""
+    major = int((platform.mac_ver()[0] or "0").split(".")[0])
+    if sys.platform != "darwin" or major < 12 or "--no-island" in sys.argv or not ISLAND_SRC.exists():
+        return
+    if subprocess.run(["xcode-select", "-p"], capture_output=True).returncode != 0:
+        return  # calling swiftc would pop the "install developer tools" dialog
+    if not ISLAND_BIN.exists() or ISLAND_BIN.stat().st_mtime < ISLAND_SRC.stat().st_mtime:
+        ICON_CACHE.mkdir(parents=True, exist_ok=True)
+        built = subprocess.run(["xcrun", "swiftc", "-O", str(ISLAND_SRC), "-o", str(ISLAND_BIN)], capture_output=True, text=True)
+        if built.returncode != 0:
+            print("Notch island not shown: Swift compile failed (" + (built.stderr.strip().splitlines() or ["?"])[-1] + ")", flush=True)
+            return
+    proc = subprocess.Popen([str(ISLAND_BIN), str(PORT), str(os.getpid())])
+    atexit.register(proc.terminate)
+
+
 # ---------------------------------------------------------------- --check
 
 def check():
@@ -863,6 +886,7 @@ def main():
     print(f"Agent Hub{' (demo)' if DEMO else ''}: {url}  (Ctrl+C to quit)", flush=True)
     if "--no-open" not in sys.argv:
         webbrowser.open(url)
+    threading.Thread(target=start_island, daemon=True).start()  # the first compile takes a few seconds
     try:
         server.serve_forever()
     except KeyboardInterrupt:
