@@ -46,7 +46,7 @@
 ## 快速开始
 
 ```bash
-git clone https://github.com/SiegoZhang/agent-hub.git
+git clone https://github.com/sagezhzhz/agent-hub.git
 cd agent-hub
 python3 agent_hub.py
 ```
@@ -90,7 +90,7 @@ python3 agent_hub.py --check
 | 页面顶部显示「读取 … 失败」 | 和 `UNRECOGNIZED FORMAT` 一样，只是显示在页面上 |
 | 双击 `.command` 文件被拦截 | 右键选「打开」一次即可 |
 
-碰到问题时请[提 Issue](https://github.com/SiegoZhang/agent-hub/issues/new/choose)，并贴上 `--check` 的输出。输出里只有应用版本、安装位置和对话数量，不包含对话标题或内容。
+碰到问题时请[提 Issue](https://github.com/sagezhzhz/agent-hub/issues/new/choose)，并贴上 `--check` 的输出。输出里只有应用版本、安装位置和对话数量，不包含对话标题或内容。
 
 ## 接入更多应用
 

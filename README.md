@@ -46,7 +46,7 @@ Apps you don't have are simply skipped.
 ## Quick start
 
 ```bash
-git clone https://github.com/SiegoZhang/agent-hub.git
+git clone https://github.com/sagezhzhz/agent-hub.git
 cd agent-hub
 python3 agent_hub.py
 ```
@@ -90,7 +90,7 @@ python3 agent_hub.py --check
 | The page shows "Couldn't read …" | Same as `UNRECOGNIZED FORMAT`, shown in the dashboard. |
 | Double-clicking the `.command` file is blocked | Right-click it → Open, once. |
 
-When something's wrong, [open an issue](https://github.com/SiegoZhang/agent-hub/issues/new/choose) and paste the `--check` output. It contains app versions, install locations and conversation counts, not titles or content.
+When something's wrong, [open an issue](https://github.com/sagezhzhz/agent-hub/issues/new/choose) and paste the `--check` output. It contains app versions, install locations and conversation counts, not titles or content.
 
 ## Adding another app
 
