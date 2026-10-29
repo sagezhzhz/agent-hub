@@ -315,6 +315,25 @@ def claude_turn_open(cli_session_id):
     return None
 
 
+def claude_pending_send(waiting_dir, sid):
+    """When a prompt you just sent is still on its way into the transcript, its timestamp in ms; else 0.
+
+    Despite its name, waiting-input/<session>.json is the desktop app's outbox: it holds a
+    message you sent until Claude Code writes it to the transcript (cause "awaits_transcript"),
+    usually for about a second. It means a turn is starting, not that the session needs you.
+    """
+    try:
+        d = json.loads((waiting_dir / f"{sid}.json").read_text())
+    except (OSError, ValueError):
+        return 0
+    sent = 0
+    for e in d.get("entries") or [] if isinstance(d, dict) else []:
+        msg = e.get("msg") if isinstance(e, dict) and isinstance(e.get("msg"), dict) else {}
+        if e.get("initiator") == "user" and msg.get("type") == "user":
+            sent = max(sent, iso_ms(msg.get("timestamp") or "") or d.get("savedAt") or 1)
+    return sent
+
+
 def claude_sessions():
     out = []
     for path in glob.glob(str(CLAUDE_SESSIONS / "*" / "*" / "local_*.json")):
@@ -330,12 +349,16 @@ def claude_sessions():
         edge_at = d.get("lastTurnEdgeAt") or 0
         summary = d.get("postTurnSummary") if isinstance(d.get("postTurnSummary"), dict) else {}
         last_write = max(mtime_ms(path), d.get("lastActivityAt") or 0, edge_at, user_at)
+        sent_at = claude_pending_send(waiting_dir, sid)
         mid_turn = claude_turn_open(d.get("cliSessionId"))
         if mid_turn is None:  # no transcript to go by: a message sent after the last turn edge
             mid_turn = user_at > edge_at
         running_since = 0
-        if d.get("interruptedAwaitingPerson") or (waiting_dir.is_dir() and any(sid in p.name for p in waiting_dir.iterdir())):
+        if d.get("interruptedAwaitingPerson"):
             status = "waiting"  # paused mid-turn on a question or a permission prompt
+        elif sent_at:  # just sent, not in the transcript yet
+            status, running_since = "running", sent_at
+            last_write = max(last_write, sent_at)
         elif mid_turn and now_ms() - last_write < RUNNING_STALE_SEC * 1000:
             status, running_since = "running", user_at or last_write
         elif summary.get("needs_action"):
