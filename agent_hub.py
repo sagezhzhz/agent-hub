@@ -389,16 +389,17 @@ GROK_TASK_SEC = 50 * 60  # Grok Bot stops a background task after 50 minutes ("s
 GROK_PROMISE = re.compile(
     r"[:：]\s*$"
     r"|我?正在(写|做|改|跑|查|看|对|翻|整理|处理|生成|画|核|测)|稍等|稍后|这就|(已经|正)?在(写|做|改|跑|查|画|整理|处理|生成)了"
-    r"|我(现在|先|这就|马上|已经)(就)?(开始|着手|去|动手|在)"
+    r"|我(现在|先|这就|马上|已经)(就)?(开始|着手|去|动手|在)|已经(开始|动手|着手)"
+    r"|我(会|再|就).{0,60}?(发你|发给你|给你|告诉你|回报|汇报|开 ?PR)"
     r"|(好|完|齐)(了|之后|以后|后)?[，,]?\s*(我)?(就|再|会)?.{0,4}?(把|发|交|附|回|推|贴|同步|告诉|通知|汇报)"
-    r"|\bI['’]ll (send|share|post|report|let you know|get back|ping|follow up)"
+    r"|\bI['’]ll (send|share|post|report|let you know|get back|ping|follow up)|\bI['’]ve (started|begun)"
     r"|\bI['’]m (now |still )?(working|starting|looking into|checking|writing|running|building)"
     r"|\b(working on it|on it now|hang tight|in a (moment|minute|few minutes))",
     re.I,
 )
 # ...unless the next step is yours: a question, or something to approve, connect, decide or try.
 GROK_YOUR_TURN = re.compile(
-    r"[?？]\s*$|跟我说|告诉我|你(来)?定|等你|请你|你决定|你确认|你在手机上|你试|你回"
+    r"[?？]\s*$|跟我说|告诉我|你(来)?定|等你|请你|你决定|你确认|你在手机上|你试|你回|你看|(可以|没问题|同意)的话"
     r"|connect card|approve|let me know|tell me|your call|you decide",
     re.I,
 )
