@@ -381,6 +381,33 @@ def claude_sessions():
 # ---------------------------------------------------------------- Grok Bot
 
 GROK_STORE = APP_SUPPORT / "Grok Bot" / "sand-client-persistence"
+GROK_TASK_SEC = 50 * 60  # Grok Bot stops a background task after 50 minutes ("so it would not hang")
+
+# Grok bots answer a request at once ("on it, I'll send it when it's done") and keep working
+# in the background, reporting later in a turn of their own. The store has no running flag,
+# so a last message that promises more work, and doesn't hand the next step to you, counts as running.
+GROK_PROMISE = re.compile(
+    r"[:：]\s*$"
+    r"|我?正在(写|做|改|跑|查|看|对|翻|整理|处理|生成|画|核|测)|稍等|稍后|这就|(已经|正)?在(写|做|改|跑|查|画|整理|处理|生成)了"
+    r"|我(现在|先|这就|马上|已经)(就)?(开始|着手|去|动手|在)"
+    r"|(好|完|齐)(了|之后|以后|后)?[，,]?\s*(我)?(就|再|会)?.{0,4}?(把|发|交|附|回|推|贴|同步|告诉|通知|汇报)"
+    r"|\bI['’]ll (send|share|post|report|let you know|get back|ping|follow up)"
+    r"|\bI['’]m (now |still )?(working|starting|looking into|checking|writing|running|building)"
+    r"|\b(working on it|on it now|hang tight|in a (moment|minute|few minutes))",
+    re.I,
+)
+# ...unless the next step is yours: a question, or something to approve, connect, decide or try.
+GROK_YOUR_TURN = re.compile(
+    r"[?？]\s*$|跟我说|告诉我|你(来)?定|等你|请你|你决定|你确认|你在手机上|你试|你回"
+    r"|connect card|approve|let me know|tell me|your call|you decide",
+    re.I,
+)
+
+
+def grok_promises_more(text):
+    """True when the bot's last message says it is still working rather than handing back to you."""
+    text = (text or "").strip()
+    return bool(GROK_PROMISE.search(text)) and not GROK_YOUR_TURN.search(text)
 
 
 def b32key(name):
@@ -425,8 +452,12 @@ def grok_sessions():
             continue
         entry = r.get("lastEntry") if isinstance(r.get("lastEntry"), dict) else {}
         activity = max(r.get("lastActivityAt") or 0, r.get("updatedAt") or 0)
+        text = (entry.get("sessionPreview") or {}).get("text") or entry.get("text") or ""
+        running_since = 0
         if r.get("awaitingUserResponse"):
             status = "waiting"
+        elif grok_promises_more(text) and now_ms() - activity < GROK_TASK_SEC * 1000:
+            status, running_since = "running", activity
         elif r.get("hasUnread"):
             status = finish("idle", activity, 0, "grok", r["id"])
         else:
@@ -443,7 +474,7 @@ def grok_sessions():
         out.append({
             "app": "grok", "id": r["id"], "title": first_line(r.get("name")), **project,
             "preview": strip_md_links(entry.get("text") or "")[:240], "updatedAt": activity,
-            "runningSince": 0, "status": status, "unreadCount": r.get("unreadCount") or 0,
+            "runningSince": running_since, "status": status, "unreadCount": r.get("unreadCount") or 0,
         })
     out.sort(key=lambda s: s["updatedAt"], reverse=True)
     return out[:LIMIT_PER_APP]
