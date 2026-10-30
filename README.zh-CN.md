@@ -113,4 +113,4 @@ Agent Hub 是独立项目，与 OpenAI、Anthropic、xAI、腾讯、Anysphere �
 
 ## 许可证
 
-[MIT](LICENSE)
+[Apache-2.0](LICENSE)

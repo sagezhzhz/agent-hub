@@ -113,4 +113,4 @@ Agent Hub is an independent project and is not affiliated with or endorsed by Op
 
 ## License
 
-[MIT](LICENSE)
+[Apache-2.0](LICENSE)
