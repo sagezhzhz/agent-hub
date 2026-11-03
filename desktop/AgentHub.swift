@@ -248,7 +248,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     }
 
     @objc private func about() { NSApp.orderFrontStandardAboutPanel(options: [
-        .applicationName: "Agent Hub", .applicationVersion: "1.0.0",
+        .applicationName: "Agent Hub", .applicationVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0",
         .credits: NSAttributedString(string: "本地 AI 会话看板 · macOS 桌面版\n基于 sagezhzhz/agent-hub，Apache-2.0。")
     ]) }
     @objc private func quit() { NSApp.terminate(nil) }

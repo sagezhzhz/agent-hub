@@ -4,7 +4,7 @@
 
 ## 安装和数据
 
-打开 DMG，将 Agent Hub 拖入 Applications。当前构建适用于 Apple Silicon（M 系列）Mac，macOS 13 及以上。应用采用本地 ad-hoc 签名，尚未使用 Apple Developer ID 签名或公证；若要公开分发为无系统拦截的安装包，还需开发者证书和公证。
+打开 DMG，将 Agent Hub 拖入 Applications。当前构建适用于 Apple Silicon（M 系列）Mac，macOS 13 及以上。初始发布的 v1.0.0 为本地 ad-hoc 签名；后续构建支持正式 Developer ID 签名和 Apple 公证。请以所下载版本的发布说明和公证票据为准，正式签名本身不代表已完成公证。
 
 会话继续从原应用的本地数据中只读获取。已读记录保存在 `~/Library/Application Support/Agent Hub/agent_hub_state.json`，日志保存在 `~/Library/Logs/Agent Hub/desktop.log`。应用升级不会覆盖这些数据。安装包不包含任何个人会话、已读记录或凭据。卸载时将应用移到废纸篓即可；保留的数据不会影响重新安装。
 
@@ -21,3 +21,34 @@ uv pip install --python .build/packaging-env/bin/python -r desktop/requirements-
 产物位于 `dist/Agent Hub.app` 和 `dist/Agent-Hub-1.0.0-macOS-arm64.dmg`。构建脚本保留 Python/PyInstaller 许可及上游 Apache-2.0 许可。重新构建会替换 `dist` 内的同名产物，不会改动已安装的应用。
 
 Swift/AppKit 和系统 WebKit 提供原生窗口，PyInstaller 封装后端及 Python 运行环境，灵动岛预先编译。桌面服务优先监听本机 `127.0.0.1:47322`，占用时自动换端口。主进程异常退出后，后端也会自动停止。
+
+## Developer ID 签名与 Apple 公证
+
+正式分发需要有效的 Apple Developer Program 会员、已安装在本机钥匙串的 Developer ID Application 证书及对应私钥。不要将私钥、专用密码或 API 密钥提交到仓库。
+
+```bash
+security find-identity -v -p codesigning
+.build/packaging-env/bin/python desktop/build.py --dmg \
+  --version 1.0.1 --build-number 2 \
+  --sign-identity "Developer ID Application: YOUR NAME (TEAMID)"
+```
+
+签名构建会从内向外签署所有内嵌原生代码，启用 Hardened Runtime，取得安全时间戳，并签署 DMG。未传入 `--sign-identity` 时仍生成本地 ad-hoc 签名版本。
+
+在自己的终端安全输入 Apple 账号专用密码，将认证保存到本机钥匙串；不需要把密码写入命令或源码：
+
+```bash
+xcrun notarytool store-credentials agent-hub-notary \
+  --apple-id YOUR_APPLE_ACCOUNT --team-id YOUR_TEAM_ID \
+  --keychain "$HOME/Library/Keychains/login.keychain-db"
+```
+
+随后提交公证：
+
+```bash
+.build/packaging-env/bin/python desktop/notarize.py \
+  dist/Agent-Hub-1.0.1-macOS-arm64.dmg --keychain-profile agent-hub-notary \
+  --keychain "$HOME/Library/Keychains/login.keychain-db"
+```
+
+保存认证与提交公证时使用相同的钥匙串路径，避免不同运行会话找不到认证记录。公证脚本会保存 submission ID 与结果至 `.build/notarization/`；只有 Apple 返回 `Accepted` 后才附加并验证票据，然后重新生成最终 DMG 的 SHA-256 文件。若中途断开，可加 `--submission-id ID` 继续等待已有任务，避免重复上传。发布前检查日志并测试下载后的安装体验；仅完成 Developer ID 签名不代表已通过公证。
