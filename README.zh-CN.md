@@ -6,6 +6,14 @@
 
 同时开着十几个 agent、分散在三个应用里时，很难一眼看出哪个在等你回复、哪个刚做完、哪个还在跑。Agent Hub 读取各应用存在本地的数据，把所有对话按状态排进看板，点击卡片就在对应应用里打开那个对话。
 
+## 下载 macOS 桌面版
+
+**[下载 Agent Hub 1.0.0 安装包（M 系列 Mac，.dmg）](https://github.com/sagezhzhz/agent-hub/releases/download/v1.0.0/Agent-Hub-1.0.0-macOS-arm64.dmg)** · [查看最新版本](https://github.com/sagezhzhz/agent-hub/releases/latest)
+
+适用于 **Apple Silicon（M 系列）Mac，macOS 13 及以上**。打开 DMG，将 **Agent Hub** 拖入 **Applications（应用程序）**，以后直接打开应用即可，无需终端、Python 或 Xcode。应用带独立窗口和预编译的灵动岛；关闭窗口或按 `⌘Q` 会同时停止后台服务。
+
+当前版本采用本地签名，**尚未进行 Apple 公证**，下载后首次打开可能被 macOS 安全检查拦截。暂未提供 Intel Mac 或 Windows 安装包。详见[版本说明与 SHA-256 校验文件](https://github.com/sagezhzhz/agent-hub/releases/tag/v1.0.0)及[桌面版构建说明](desktop/README.md)。
+
 ![按状态看板：需要你处理、刚完成 · 未查看、运行中、最近四列](docs/status-board.zh.png)
 
 <img src="docs/sidebar.zh.png" alt="窗口缩窄成侧边栏时，各列竖排成一列" width="300" align="right">
@@ -23,14 +31,14 @@
 - **按项目看板**：同一个文件夹下的 Codex 和 Claude 会话放在一起，Grok Bot 按所属群组归类。
 - **点击跳转**：用各应用自己的链接协议（`codex://`、`claude://`、`grokbot://`、`workbuddy-ai://`、`cursor://`）打开对应对话。
 - **适配侧边栏**：宽屏四列，半屏两列两行，缩窄放在 agent 应用旁边时变成一列竖排。
-- **刘海灵动岛**：在 MacBook 刘海两侧（没有刘海的 Mac 在菜单栏正中）显示有几个 agent 需要你；有新的待处理或刚完成时会自动展开提示，鼠标移上去展开列表，点一行直接跳过去。需要 Xcode 命令行工具和 macOS 12 以上，首次启动时自动编译一次。
+- **刘海灵动岛**：在 MacBook 刘海两侧（没有刘海的 Mac 在菜单栏正中）显示有几个 agent 需要你；有新的待处理或刚完成时会自动展开提示，鼠标移上去展开列表，点一行直接跳过去。桌面版已预先编译；从源码运行时需要 Xcode 命令行工具和 macOS 12 以上，首次启动时自动编译一次。
 - **键盘操作**：方向键选择，回车打开，空格预览最后一条消息，`U` 标为已看，`/` 搜索。
 - **真实应用图标**：每张卡片显示应用自己的图标和名称，图标取自你 Mac 上已安装的应用。
 - **本地只读**：数据不离开你的 Mac，不修改任何应用的数据，不发任何网络请求。
 - **中英双语**：跟随系统语言自动切换；在网址后加 `?lang=zh` 或 `?lang=en` 可以手动指定。
 - **零依赖**：一个 Python 文件（只用标准库）加一个 HTML 页面，支持浅色和深色模式。
 
-## 运行环境
+## 从源码运行的环境要求
 
 - macOS
 - Python 3.8 及以上（Xcode 命令行工具自带的就可以）
@@ -43,7 +51,7 @@
 
 没装的应用会自动跳过。
 
-## 快速开始
+## 从源码运行
 
 ```bash
 git clone https://github.com/sagezhzhz/agent-hub.git
@@ -72,6 +80,8 @@ python3 agent_hub.py
 | 刚完成 · 未查看 | 在你上次从面板打开之后又完成了 | 在你上次在 Claude 里查看之后又完成了 | 有未读消息，或在你上次查看之后有新动态 | 在你上次从面板打开之后又完成了 | 未读，或在你上次查看之后有新动态 |
 
 你在面板里打开过（或按 `U` 标为已看）的对话，会记在脚本旁边的 `agent_hub_state.json` 里，此外只会把各应用图标转成 PNG 缓存到 `~/Library/Caches/agent-hub`。第一次启动时，只把最近 6 小时内完成的对话算作未查看，避免历史对话一下子全涌进这一列。
+
+桌面版的已读记录保存在 `~/Library/Application Support/Agent Hub/`，更新或替换应用时会保留。桌面版日志可从菜单栏 **Agent Hub → 打开日志** 查看。
 
 ## 排查问题
 

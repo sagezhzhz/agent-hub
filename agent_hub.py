@@ -47,7 +47,8 @@ PORT = DEFAULT_PORT  # the port actually bound, set in main()
 HOME = Path.home()
 APP_SUPPORT = HOME / "Library" / "Application Support"
 PAGE = Path(__file__).with_name("agent_hub.html")
-STATE_FILE = Path(__file__).with_name("agent_hub_state.json")
+DATA_DIR = Path(os.environ["AGENT_HUB_DATA_DIR"]) if os.environ.get("AGENT_HUB_DATA_DIR") else Path(__file__).parent
+STATE_FILE = DATA_DIR / "agent_hub_state.json"
 ICON_CACHE = HOME / "Library" / "Caches" / "agent-hub"
 ISLAND_SRC = Path(__file__).with_name("agent_hub_island.swift")
 ISLAND_BIN = ICON_CACHE / "agent-hub-island"
@@ -94,6 +95,7 @@ class SeenState:
 
     def _save(self):
         try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
             tmp = self.path.with_suffix(".tmp")
             tmp.write_text(json.dumps({"baselineAt": self.baseline, "seen": self.seen}))
             tmp.replace(self.path)

@@ -6,3 +6,8 @@ agent_hub_state.tmp
 .claude/
 __pycache__/
 .DS_Store
+
+# Desktop packaging outputs and private build environments
+.build/
+.build-tools/
+dist/

@@ -144,7 +144,11 @@ final class Hub: ObservableObject {
     }
 
     func openBoard() {
-        NSWorkspace.shared.open(URL(string: base + "/")!)
+        if args.count > 3 {
+            NSWorkspace.shared.open(URL(fileURLWithPath: args[3]))
+        } else {
+            NSWorkspace.shared.open(URL(string: base + "/")!)
+        }
     }
 }
 

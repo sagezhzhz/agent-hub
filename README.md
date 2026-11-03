@@ -6,6 +6,14 @@ One local dashboard for every AI agent conversation running in your **desktop ap
 
 When you have a dozen agents working across three apps, it's hard to tell which one is waiting for you, which just finished, and which is still running. Agent Hub reads each app's local data, sorts every conversation onto a status board, and opens the right conversation in the right app when you click a card.
 
+## Download the macOS app
+
+**[Download Agent Hub 1.0.0 for Apple Silicon (.dmg)](https://github.com/sagezhzhz/agent-hub/releases/download/v1.0.0/Agent-Hub-1.0.0-macOS-arm64.dmg)** · [All releases](https://github.com/sagezhzhz/agent-hub/releases/latest)
+
+Requires an **Apple Silicon (M-series) Mac running macOS 13 or later**. Open the DMG, drag **Agent Hub** into **Applications**, and launch it. Python, Xcode and a terminal are not needed. The app opens its own window, includes the notch island, and stops its background service when you close the window or press `⌘Q`.
+
+This release is ad-hoc signed and **not Apple-notarized**, so macOS may block the first launch after downloading. Intel and Windows installers are not included. See the [release notes and SHA-256 checksum](https://github.com/sagezhzhz/agent-hub/releases/tag/v1.0.0) and [desktop build instructions](desktop/README.md).
+
 ![Status board with four columns: needs you, just finished, running, recent](docs/status-board.png)
 
 <img src="docs/sidebar.png" alt="Narrowed into a sidebar, the columns stack into one list" width="300" align="right">
@@ -23,14 +31,14 @@ Narrow the window and it turns into a single stacked list, so it can sit beside 
 - **Project board** — Codex and Claude sessions from the same folder grouped together; Grok bots grouped by their team.
 - **Click to jump** — opens the conversation in its own app via the app's URL scheme (`codex://`, `claude://`, `grokbot://`, `workbuddy-ai://`, `cursor://`).
 - **Fits a sidebar** — 4 columns when wide, 2×2 at half screen, a single stacked column when narrowed beside your agent app.
-- **Notch island** — a Dynamic Island–style strip around the MacBook notch (top of the menu bar on other Macs) shows how many agents need you, pops open when one starts waiting or finishes, and lists them on hover; click a row to jump in. Needs Xcode Command Line Tools and macOS 12+; it's compiled once on first launch.
+- **Notch island** — a Dynamic Island–style strip around the MacBook notch (top of the menu bar on other Macs) shows how many agents need you, pops open when one starts waiting or finishes, and lists them on hover; click a row to jump in. Prebuilt in the desktop app; when running from source, it needs Xcode Command Line Tools and macOS 12+ and is compiled once on first launch.
 - **Keyboard** — arrows to move, `Enter` to open, `Space` to peek at the last message, `U` to mark as viewed, `/` to search.
 - **Real app icons** — each card shows the app's own logo and name, taken from the apps installed on your Mac.
 - **Private and read-only** — everything stays on your Mac. It never modifies the apps' data and makes no network requests.
 - **English and Chinese** — follows your system language; add `?lang=en` or `?lang=zh` to the URL to switch.
 - **No dependencies** — one Python file (standard library only) and one HTML page. Light and dark mode.
 
-## Requirements
+## Requirements for running from source
 
 - macOS
 - Python 3.8+ (the one that ships with Xcode Command Line Tools works)
@@ -43,7 +51,7 @@ Narrow the window and it turns into a single stacked list, so it can sit beside 
 
 Apps you don't have are simply skipped.
 
-## Quick start
+## Run from source
 
 ```bash
 git clone https://github.com/sagezhzhz/agent-hub.git
@@ -72,6 +80,8 @@ Options:
 | Just finished | finished after you last opened it from Agent Hub | finished after you last focused it in Claude | unread messages, or activity after you last viewed it | completed after you last opened it from Agent Hub | unread, or new activity after you last read it |
 
 Agent Hub remembers which finished conversations you opened (or marked with `U`) in `agent_hub_state.json` next to the script. Besides that, it only writes a cached PNG of each app's icon to `~/Library/Caches/agent-hub`. On first launch only the last 6 hours count as "just finished", so your history doesn't flood the column.
+
+The desktop app stores its viewed-state file in `~/Library/Application Support/Agent Hub/`, separate from the app bundle so it survives updates. Desktop logs are available from **Agent Hub → 打开日志 (Open log)** in the menu bar.
 
 ## Troubleshooting
 
