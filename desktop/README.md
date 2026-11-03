@@ -4,7 +4,7 @@
 
 ## 安装和数据
 
-打开 DMG，将 Agent Hub 拖入 Applications。当前构建适用于 Apple Silicon（M 系列）Mac，macOS 13 及以上。初始发布的 v1.0.0 为本地 ad-hoc 签名；后续构建支持正式 Developer ID 签名和 Apple 公证。请以所下载版本的发布说明和公证票据为准，正式签名本身不代表已完成公证。
+打开 DMG，将 Agent Hub 拖入 Applications。当前构建适用于 Apple Silicon（M 系列）Mac，macOS 13 及以上。v1.0.1 发布安装包已完成 Developer ID 正式签名和 Apple 公证，DMG 已附加并验证公证票据。初始发布的 v1.0.0 为本地 ad-hoc 签名；自行构建时请以实际签名和公证结果为准。
 
 会话继续从原应用的本地数据中只读获取。已读记录保存在 `~/Library/Application Support/Agent Hub/agent_hub_state.json`，日志保存在 `~/Library/Logs/Agent Hub/desktop.log`。应用升级不会覆盖这些数据。安装包不包含任何个人会话、已读记录或凭据。卸载时将应用移到废纸篓即可；保留的数据不会影响重新安装。
 

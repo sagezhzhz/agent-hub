@@ -8,11 +8,11 @@
 
 ## 下载 macOS 桌面版
 
-**[下载 Agent Hub 1.0.0 安装包（M 系列 Mac，.dmg）](https://github.com/sagezhzhz/agent-hub/releases/download/v1.0.0/Agent-Hub-1.0.0-macOS-arm64.dmg)** · [查看最新版本](https://github.com/sagezhzhz/agent-hub/releases/latest)
+**[下载 Agent Hub 1.0.1 安装包（M 系列 Mac，.dmg）](https://github.com/sagezhzhz/agent-hub/releases/download/v1.0.1/Agent-Hub-1.0.1-macOS-arm64.dmg)** · [查看最新版本](https://github.com/sagezhzhz/agent-hub/releases/latest)
 
 适用于 **Apple Silicon（M 系列）Mac，macOS 13 及以上**。打开 DMG，将 **Agent Hub** 拖入 **Applications（应用程序）**，以后直接打开应用即可，无需终端、Python 或 Xcode。应用带独立窗口和预编译的灵动岛；关闭窗口或按 `⌘Q` 会同时停止后台服务。
 
-当前版本采用本地签名，**尚未进行 Apple 公证**，下载后首次打开可能被 macOS 安全检查拦截。暂未提供 Intel Mac 或 Windows 安装包。详见[版本说明与 SHA-256 校验文件](https://github.com/sagezhzhz/agent-hub/releases/tag/v1.0.0)及[桌面版构建说明](desktop/README.md)。
+当前版本已完成 **Developer ID 正式签名和 Apple 公证**，DMG 已附加公证票据。升级前先退出旧版，再替换应用；已有已读记录会保留。暂未提供 Intel Mac 或 Windows 安装包。详见[版本说明与 SHA-256 校验文件](https://github.com/sagezhzhz/agent-hub/releases/tag/v1.0.1)及[桌面版构建说明](desktop/README.md)。
 
 ![按状态看板：需要你处理、刚完成 · 未查看、运行中、最近四列](docs/status-board.zh.png)
 
