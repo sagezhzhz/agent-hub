@@ -18,7 +18,7 @@ uv pip install --python .build/packaging-env/bin/python -r desktop/requirements-
 .build/packaging-env/bin/python desktop/build.py --dmg
 ```
 
-产物位于 `dist/Agent Hub.app` 和 `dist/Agent-Hub-1.0.2-macOS-arm64.dmg`。构建脚本保留 Python/PyInstaller 许可及上游 Apache-2.0 许可。重新构建会替换 `dist` 内的同名产物，不会改动已安装的应用。
+产物位于 `dist/Agent Hub.app` 和 `dist/Agent-Hub-1.0.3-macOS-arm64.dmg`。构建脚本保留 Python/PyInstaller 许可及上游 Apache-2.0 许可。重新构建会替换 `dist` 内的同名产物，不会改动已安装的应用。
 
 Swift/AppKit 和系统 WebKit 提供原生窗口，PyInstaller 封装后端及 Python 运行环境，灵动岛预先编译。桌面服务优先监听本机 `127.0.0.1:47322`，占用时自动换端口。主进程异常退出后，后端也会自动停止。
 
@@ -29,7 +29,7 @@ Swift/AppKit 和系统 WebKit 提供原生窗口，PyInstaller 封装后端及 P
 ```bash
 security find-identity -v -p codesigning
 .build/packaging-env/bin/python desktop/build.py --dmg \
-  --version 1.0.2 --build-number 3 \
+  --version 1.0.3 --build-number 4 \
   --sign-identity "Developer ID Application: YOUR NAME (TEAMID)"
 ```
 
@@ -47,8 +47,35 @@ xcrun notarytool store-credentials agent-hub-notary \
 
 ```bash
 .build/packaging-env/bin/python desktop/notarize.py \
-  dist/Agent-Hub-1.0.2-macOS-arm64.dmg --keychain-profile agent-hub-notary \
+  dist/Agent-Hub-1.0.3-macOS-arm64.dmg --keychain-profile agent-hub-notary \
   --keychain "$HOME/Library/Keychains/login.keychain-db"
 ```
 
 保存认证与提交公证时使用相同的钥匙串路径，避免不同运行会话找不到认证记录。公证脚本会保存 submission ID 与结果至 `.build/notarization/`；只有 Apple 返回 `Accepted` 后才附加并验证票据，然后重新生成最终 DMG 的 SHA-256 文件。若中途断开，可加 `--submission-id ID` 继续等待已有任务，避免重复上传。发布前检查日志并测试下载后的安装体验；仅完成 Developer ID 签名不代表已通过公证。
+
+## 自动更新（Sparkle）
+
+从 1.0.3 起，应用内置 [Sparkle](https://sparkle-project.org) 2。首次启动后它会询问是否自动检查更新，之后每天检查一次 `https://github.com/sagezhzhz/agent-hub/releases/latest/download/appcast.xml`；菜单「Agent Hub → 检查更新…」可随时手动检查。发现新版本时显示更新说明，下载后校验 EdDSA 签名和 Developer ID 签名，替换应用并重新打开。1.0.2 及更早版本没有更新功能，需要手动安装一次 1.0.3。
+
+构建脚本会下载固定版本的 Sparkle 到 `.build-tools/`，并校验其 SHA-256。
+
+### 更新签名密钥
+
+更新包用 EdDSA 密钥签名。公钥写在 `desktop/build.py` 的 `SPARKLE_PUBLIC_KEY`，私钥只保存在发布机的登录钥匙串（账户 `agent-hub`），不要提交到仓库。**私钥丢失后，已安装的应用将无法再接受任何更新**，请自行在终端导出一份备份并离线保存：
+
+```bash
+.build-tools/sparkle-2.10.0/bin/generate_keys --account agent-hub -x ~/agent-hub-sparkle-private-key
+```
+
+换一台电脑发布时，用 `-f` 导入这份备份。
+
+### 发布一个版本
+
+1. 构建、签名、公证 DMG（见上文），版本号和 build 号都要比上一版大。
+2. 生成 appcast（会用钥匙串中的私钥签名 DMG，并显示发布说明中以 `- ` 开头的条目）：
+
+   ```bash
+   .build/packaging-env/bin/python desktop/appcast.py dist/Agent-Hub-X.Y.Z-macOS-arm64.dmg --notes 发布说明.md
+   ```
+
+3. 在 GitHub Release 中同时上传 DMG、`.dmg.sha256` 和 `dist/appcast.xml`，并设为 Latest。已安装的应用会通过 `releases/latest/download/appcast.xml` 找到它。

@@ -1,4 +1,5 @@
 import AppKit
+import Sparkle
 import WebKit
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate {
@@ -13,6 +14,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     private var quitting = false
     private var reportingFailure = false
     private var islandMenu: NSMenuItem!
+    // Checks the appcast daily (after asking once) and offers to install new releases.
+    private let updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil,
+                                                       userDriverDelegate: nil)
     private var logHandle: FileHandle?
     private let logURL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Logs/Agent Hub/desktop.log")
@@ -72,6 +76,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         let main = NSMenu()
         let appMenu = NSMenu(title: "Agent Hub")
         appMenu.addItem(menuItem("关于 Agent Hub", #selector(about)))
+        let update = NSMenuItem(title: "检查更新…",
+                                action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)), keyEquivalent: "")
+        update.target = updater
+        appMenu.addItem(update)
         appMenu.addItem(.separator())
         islandMenu = menuItem("显示灵动岛", #selector(toggleIsland))
         islandMenu.state = UserDefaults.standard.bool(forKey: "showIsland") ? .on : .off

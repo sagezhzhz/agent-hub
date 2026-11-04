@@ -18,12 +18,38 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / ".build"
 DIST = ROOT / "dist"
 APP = DIST / "Agent Hub.app"
-VERSION = "1.0.2"
+VERSION = "1.0.3"
+
+# Sparkle updates the installed app from the appcast attached to the latest GitHub release.
+SPARKLE_VERSION = "2.10.0"
+SPARKLE_SHA256 = "c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c"
+SPARKLE = ROOT / ".build-tools" / f"sparkle-{SPARKLE_VERSION}"
+FEED_URL = "https://github.com/sagezhzhz/agent-hub/releases/latest/download/appcast.xml"
+# Public half of the EdDSA key that signs updates; the private half stays in the
+# release machine's login Keychain (account "agent-hub", see desktop/README.md).
+SPARKLE_PUBLIC_KEY = "/bji6caFBSk2yu3RsO+H36cFcofNoiMKm1NG3mZxPv8="
 
 
 def run(*args, **kwargs):
     print("Running:", " ".join(map(str, args)), flush=True)
     subprocess.run([str(a) for a in args], cwd=ROOT, check=True, **kwargs)
+
+
+def fetch_sparkle():
+    """Download the pinned Sparkle release once and check it against its SHA-256."""
+    if (SPARKLE / "Sparkle.framework").is_dir():
+        return SPARKLE
+    archive = SPARKLE.parent / f"Sparkle-{SPARKLE_VERSION}.tar.xz"
+    SPARKLE.parent.mkdir(exist_ok=True)
+    if not archive.exists():
+        run("curl", "-sSfL", "-o", archive,
+            f"https://github.com/sparkle-project/Sparkle/releases/download/{SPARKLE_VERSION}/{archive.name}")
+    if hashlib.sha256(archive.read_bytes()).hexdigest() != SPARKLE_SHA256:
+        archive.unlink()
+        raise SystemExit(f"{archive.name} doesn't match its pinned SHA-256; deleted it.")
+    SPARKLE.mkdir(exist_ok=True)
+    run("tar", "-xf", archive, "-C", SPARKLE)
+    return SPARKLE
 
 
 def sign_application(identity):
@@ -33,12 +59,16 @@ def sign_application(identity):
         magic = {b'\xfe\xed\xfa\xce', b'\xce\xfa\xed\xfe', b'\xfe\xed\xfa\xcf',
                  b'\xcf\xfa\xed\xfe', b'\xca\xfe\xba\xbe', b'\xbe\xba\xfe\xca',
                  b'\xca\xfe\xba\xbf', b'\xbf\xba\xfe\xca'}
+        sparkle = APP / "Contents/Frameworks/Sparkle.framework"
         for path in sorted(APP.rglob("*"), key=lambda item: len(item.parts), reverse=True):
-            if path.is_file() and not path.is_symlink():
+            if path.is_file() and not path.is_symlink() and sparkle not in path.parents:
                 with path.open("rb") as stream:
                     native = stream.read(4) in magic
                 if native and path != APP / "Contents/MacOS/AgentHub":
                     run("codesign", "--force", "--sign", identity, "--timestamp", "--options", "runtime", path)
+        # Sparkle's helpers are bundles: sign each as a whole, inside out, as Sparkle documents.
+        for part in ["Versions/B/Autoupdate", "Versions/B/Updater.app", ""]:
+            run("codesign", "--force", "--sign", identity, "--timestamp", "--options", "runtime", sparkle / part)
         run("codesign", "--force", "--sign", identity, "--timestamp", "--options", "runtime", APP)
     else:
         run("codesign", "--force", "--deep", "--sign", "-", APP)
@@ -76,11 +106,18 @@ def main():
     executable.parent.mkdir(parents=True)
     resources.mkdir(parents=True)
     shutil.copytree(BUILD / "frozen/agent-hub-server", resources / "backend", symlinks=True)
-    for source, target in [(ROOT / "desktop/AgentHub.swift", executable),
-                           (ROOT / "agent_hub_island.swift", resources / "agent-hub-island"),
+    frameworks = contents / "Frameworks"
+    frameworks.mkdir()
+    shutil.copytree(fetch_sparkle() / "Sparkle.framework", frameworks / "Sparkle.framework", symlinks=True)
+    # The app isn't sandboxed, so Sparkle installs without its XPC services.
+    shutil.rmtree(frameworks / "Sparkle.framework/Versions/B/XPCServices")
+    (frameworks / "Sparkle.framework/XPCServices").unlink(missing_ok=True)
+    swiftc = ["xcrun", "swiftc", "-O", "-target", f"{arch}-apple-macosx13.0", "-module-cache-path", BUILD / "swift-cache"]
+    run(*swiftc, "-F", frameworks, "-framework", "Sparkle", "-Xlinker", "-rpath",
+        "-Xlinker", "@executable_path/../Frameworks", ROOT / "desktop/AgentHub.swift", "-o", executable)
+    for source, target in [(ROOT / "agent_hub_island.swift", resources / "agent-hub-island"),
                            (ROOT / "desktop/MakeIcon.swift", BUILD / "make-icon")]:
-        run("xcrun", "swiftc", "-O", "-target", f"{arch}-apple-macosx13.0",
-            "-module-cache-path", BUILD / "swift-cache", source, "-o", target)
+        run(*swiftc, source, "-o", target)
     iconset = BUILD / "AppIcon.iconset"
     run(BUILD / "make-icon", iconset)
     run("iconutil", "-c", "icns", iconset, "-o", resources / "AppIcon.icns")
@@ -96,6 +133,8 @@ def main():
         "LSApplicationCategoryType": "public.app-category.productivity",
         "NSAppTransportSecurity": {"NSAllowsLocalNetworking": True},
         "NSHumanReadableCopyright": "Agent Hub contributors · Apache-2.0",
+        "SUFeedURL": FEED_URL, "SUPublicEDKey": SPARKLE_PUBLIC_KEY,
+        "SUEnableAutomaticChecks": True, "SUAllowsAutomaticUpdates": True,
     }
     (contents / "Info.plist").write_bytes(plistlib.dumps(metadata))
     for name in ["LICENSE", "NOTICE"]:
@@ -111,6 +150,7 @@ def main():
     for item in distribution.files or []:
         if item.name == "COPYING.txt":
             shutil.copy2(distribution.locate_file(item), licenses / "PyInstaller-COPYING.txt")
+    shutil.copy2(SPARKLE / "LICENSE", licenses / "Sparkle-LICENSE.txt")
     manifest = {"version": args.version, "architecture": arch, "python": platform.python_version(),
                 "pyinstaller": importlib.metadata.version("pyinstaller"),
                 "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
