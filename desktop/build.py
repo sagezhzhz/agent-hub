@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / ".build"
 DIST = ROOT / "dist"
 APP = DIST / "Agent Hub.app"
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 # Sparkle updates the installed app from the appcast attached to the latest GitHub release.
 SPARKLE_VERSION = "2.10.0"
