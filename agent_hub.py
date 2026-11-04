@@ -435,6 +435,25 @@ def grok_read(suffix):
     return None
 
 
+def grok_still_working(bot_id, preview, activity):
+    """The roster's preview is only the first line of the last message ("交接总结：" heading a finished
+    handoff), so confirm a promise against the full last entry of the bot's transcript when one is stored.
+    A stop notice ("A background task was stopped after 50 minutes") or a user turn means it isn't working."""
+    if now_ms() - activity >= GROK_TASK_SEC * 1000 or not grok_promises_more(preview):
+        return False
+    replica = grok_read(f".transcript.replicas.{bot_id}")
+    entries = replica.get("entries") if isinstance(replica, dict) else None
+    if not entries or not isinstance(entries[-1], dict):
+        return True
+    last = entries[-1]
+    if (last.get("timestampMs") or 0) < activity - 5000:
+        return True  # transcript copy is older than the roster; trust the preview
+    if last.get("kind") != "send-message":
+        return False  # a stop notice, or the user spoke last
+    msg = last.get("message") if isinstance(last.get("message"), dict) else {}
+    return grok_promises_more(msg.get("content") if isinstance(msg.get("content"), str) else preview)
+
+
 def grok_sessions():
     if not GROK_STORE.is_dir():
         return []
@@ -460,7 +479,7 @@ def grok_sessions():
         running_since = 0
         if r.get("awaitingUserResponse"):
             status = "waiting"
-        elif grok_promises_more(text) and now_ms() - activity < GROK_TASK_SEC * 1000:
+        elif grok_still_working(r["id"], text, activity):
             status, running_since = "running", activity
         elif r.get("hasUnread"):
             status = finish("idle", activity, 0, "grok", r["id"])
