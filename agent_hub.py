@@ -356,6 +356,7 @@ def claude_sessions():
         if mid_turn is None:  # no transcript to go by: a message sent after the last turn edge
             mid_turn = user_at > edge_at
         running_since = 0
+        seen_at = max(d.get("lastFocusedAt") or 0, STATE.seen_at("claude", sid))
         if d.get("interruptedAwaitingPerson"):
             status = "waiting"  # paused mid-turn on a question or a permission prompt
         elif sent_at:  # just sent, not in the transcript yet
@@ -363,11 +364,13 @@ def claude_sessions():
             last_write = max(last_write, sent_at)
         elif mid_turn and now_ms() - last_write < RUNNING_STALE_SEC * 1000:
             status, running_since = "running", user_at or last_write
-        elif summary.get("needs_action"):
+        elif summary.get("needs_action") and edge_at > seen_at:
+            # The app's summary asks something of you. Once you've opened the session after
+            # that turn, you've read it: a to-do you put off ("I'll push tonight") isn't news.
             status = "waiting"
         else:
             # Claude records when you last looked at the session; finished after that = unseen.
-            status = finish("idle", edge_at, d.get("lastFocusedAt") or 0, "claude", sid)
+            status = finish("idle", edge_at, seen_at, "claude", sid)
         out.append({
             "app": "claude", "id": sid, "title": first_line(d.get("title")), **folder_project(d.get("cwd", "")),
             "preview": (summary.get("needs_action") or summary.get("status_detail") or "")[:240],
