@@ -4,7 +4,7 @@
 
 ## 安装和数据
 
-打开 DMG，将 Agent Hub 拖入 Applications。当前构建适用于 Apple Silicon（M 系列）Mac，macOS 13 及以上。v1.0.1 发布安装包已完成 Developer ID 正式签名和 Apple 公证，DMG 已附加并验证公证票据。初始发布的 v1.0.0 为本地 ad-hoc 签名；自行构建时请以实际签名和公证结果为准。
+打开 DMG，将 Agent Hub 拖入 Applications。当前构建适用于 Apple Silicon（M 系列）Mac，macOS 13 及以上。v1.0.1 起的发布安装包已完成 Developer ID 正式签名和 Apple 公证，DMG 已附加并验证公证票据。初始发布的 v1.0.0 为本地 ad-hoc 签名；自行构建时请以实际签名和公证结果为准。
 
 会话继续从原应用的本地数据中只读获取。已读记录保存在 `~/Library/Application Support/Agent Hub/agent_hub_state.json`，日志保存在 `~/Library/Logs/Agent Hub/desktop.log`。应用升级不会覆盖这些数据。安装包不包含任何个人会话、已读记录或凭据。卸载时将应用移到废纸篓即可；保留的数据不会影响重新安装。
 
@@ -18,7 +18,7 @@ uv pip install --python .build/packaging-env/bin/python -r desktop/requirements-
 .build/packaging-env/bin/python desktop/build.py --dmg
 ```
 
-产物位于 `dist/Agent Hub.app` 和 `dist/Agent-Hub-1.0.0-macOS-arm64.dmg`。构建脚本保留 Python/PyInstaller 许可及上游 Apache-2.0 许可。重新构建会替换 `dist` 内的同名产物，不会改动已安装的应用。
+产物位于 `dist/Agent Hub.app` 和 `dist/Agent-Hub-1.0.2-macOS-arm64.dmg`。构建脚本保留 Python/PyInstaller 许可及上游 Apache-2.0 许可。重新构建会替换 `dist` 内的同名产物，不会改动已安装的应用。
 
 Swift/AppKit 和系统 WebKit 提供原生窗口，PyInstaller 封装后端及 Python 运行环境，灵动岛预先编译。桌面服务优先监听本机 `127.0.0.1:47322`，占用时自动换端口。主进程异常退出后，后端也会自动停止。
 
@@ -29,7 +29,7 @@ Swift/AppKit 和系统 WebKit 提供原生窗口，PyInstaller 封装后端及 P
 ```bash
 security find-identity -v -p codesigning
 .build/packaging-env/bin/python desktop/build.py --dmg \
-  --version 1.0.1 --build-number 2 \
+  --version 1.0.2 --build-number 3 \
   --sign-identity "Developer ID Application: YOUR NAME (TEAMID)"
 ```
 
@@ -47,7 +47,7 @@ xcrun notarytool store-credentials agent-hub-notary \
 
 ```bash
 .build/packaging-env/bin/python desktop/notarize.py \
-  dist/Agent-Hub-1.0.1-macOS-arm64.dmg --keychain-profile agent-hub-notary \
+  dist/Agent-Hub-1.0.2-macOS-arm64.dmg --keychain-profile agent-hub-notary \
   --keychain "$HOME/Library/Keychains/login.keychain-db"
 ```
 

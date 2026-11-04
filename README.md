@@ -8,11 +8,11 @@ When you have a dozen agents working across three apps, it's hard to tell which 
 
 ## Download the macOS app
 
-**[Download Agent Hub 1.0.1 for Apple Silicon (.dmg)](https://github.com/sagezhzhz/agent-hub/releases/download/v1.0.1/Agent-Hub-1.0.1-macOS-arm64.dmg)** · [All releases](https://github.com/sagezhzhz/agent-hub/releases/latest)
+**[Download Agent Hub 1.0.2 for Apple Silicon (.dmg)](https://github.com/sagezhzhz/agent-hub/releases/download/v1.0.2/Agent-Hub-1.0.2-macOS-arm64.dmg)** · [All releases](https://github.com/sagezhzhz/agent-hub/releases/latest)
 
 Requires an **Apple Silicon (M-series) Mac running macOS 13 or later**. Open the DMG, drag **Agent Hub** into **Applications**, and launch it. Python, Xcode and a terminal are not needed. The app opens its own window, includes the notch island, and stops its background service when you close the window or press `⌘Q`.
 
-This release is **Developer ID signed and Apple-notarized**, with a notarization ticket attached to the DMG. Quit the previous version before replacing it; local read-state data is preserved. Intel and Windows installers are not included. See the [release notes and SHA-256 checksum](https://github.com/sagezhzhz/agent-hub/releases/tag/v1.0.1) and [desktop build instructions](desktop/README.md).
+This release is **Developer ID signed and Apple-notarized**, with a notarization ticket attached to the DMG. Quit the previous version before replacing it; local read-state data is preserved. Intel and Windows installers are not included. See the [release notes and SHA-256 checksum](https://github.com/sagezhzhz/agent-hub/releases/tag/v1.0.2) and [desktop build instructions](desktop/README.md).
 
 ![Status board with four columns: needs you, just finished, running, recent](docs/status-board.png)
 
