@@ -172,6 +172,7 @@ def iso_ms(ts):
 CODEX_HOME = Path(os.environ.get("CODEX_HOME") or HOME / ".codex")
 CODEX_HIDDEN_SOURCES = ("guardian_review", "subagent")
 TURN_EVENT = re.compile(r'"timestamp":"([^"]+)".*"payload":\{"type":"(task_started|task_complete|turn_aborted)"')
+TURN_ID = re.compile(r'"turn_id":"([^"]+)"')
 
 
 def codex_db():
@@ -185,7 +186,7 @@ def codex_db():
 
 
 def codex_turn_state(rollout_path, chunk=256 * 1024, max_scan=16 * 1024 * 1024):
-    """Last turn lifecycle event in the rollout file and when it happened.
+    """Last turn lifecycle event in the rollout file: (type, when, turn id).
 
     Reads backwards in chunks: a busy turn can write megabytes of tool output after
     its task_started line, so a fixed-size tail would miss it.
@@ -193,7 +194,7 @@ def codex_turn_state(rollout_path, chunk=256 * 1024, max_scan=16 * 1024 * 1024):
     try:
         f = open(rollout_path, "rb")
     except (OSError, TypeError):
-        return None, 0
+        return None, 0, None
     with f:
         end = f.seek(0, os.SEEK_END)
         pos, carry = end, b""
@@ -208,9 +209,11 @@ def codex_turn_state(rollout_path, chunk=256 * 1024, max_scan=16 * 1024 * 1024):
                     continue
                 m = TURN_EVENT.search(raw.decode("utf-8", "replace"))
                 if m:
-                    return m.group(2), iso_ms(m.group(1))
+                    line = raw.decode("utf-8", "replace")
+                    t = TURN_ID.search(line)
+                    return m.group(2), iso_ms(m.group(1)), t and t.group(1)
             pos = start
-    return None, 0
+    return None, 0, None
 
 
 def mtime_ms(path):
@@ -244,13 +247,19 @@ def codex_sessions():
                 order by {recency} desc limit ?""",
             (*params, LIMIT_PER_APP),
         ).fetchall()
+        # The Codex app keeps a read receipt per thread: first_unread_turn is cleared once
+        # you've looked at the thread, and last_published_turn says how far that receipt goes.
+        receipts = {}
+        if con.execute("select 1 from sqlite_master where name = 'thread_read_receipts'").fetchone():
+            receipts = {tid: (unread, published) for tid, unread, published in con.execute(
+                "select thread_id, first_unread_turn, last_published_turn from thread_read_receipts")}
     finally:
         con.close()
 
     out = []
     for tid, title, cwd, updated_ms, rollout, preview in rows:
         updated_ms = updated_ms or 0
-        state, state_at = codex_turn_state(rollout)
+        state, state_at, turn_id = codex_turn_state(rollout)
         # The rollout file is written all through a turn; the threads row may not be.
         last_write = max(mtime_ms(rollout), updated_ms)
         running_since = 0
@@ -259,7 +268,11 @@ def codex_sessions():
         else:
             status = "idle"
             if state == "task_complete":
-                status = finish("idle", state_at or updated_ms, 0, "codex", tid)
+                unread, published = receipts.get(tid, ("?", None))
+                # Turn ids are UUIDv7, so they sort by time. Read only counts if the receipt
+                # already covers this turn (a CLI turn can finish while the app is closed).
+                read = unread is None and turn_id and published and published >= turn_id
+                status = finish("idle", state_at or updated_ms, state_at if read else 0, "codex", tid)
         out.append({
             "app": "codex", "id": tid, "title": first_line(title), **folder_project(cwd),
             "preview": (preview or "").strip()[:240], "updatedAt": updated_ms,
@@ -539,14 +552,15 @@ def workbuddy_sessions():
             where.append("lower(status) != 'archived'")
             rows = con.execute(
                 f"""select id, {first_of(cols, 'custom_title', 'title')}, {'cwd' if 'cwd' in cols else "''"}, status,
-                           {activity}, {'is_playground' if 'is_playground' in cols else 0}
+                           {activity}, {'is_playground' if 'is_playground' in cols else 0},
+                           {'unread' if 'unread' in cols else 'null'}
                     from sessions where {' and '.join(where)}
                     order by {activity} desc limit ?""",
                 (LIMIT_PER_APP,),
             ).fetchall()
         finally:
             con.close()
-        for sid, title, cwd, raw_status, activity_ms, playground in rows:
+        for sid, title, cwd, raw_status, activity_ms, playground, unread in rows:
             activity_ms = activity_ms or 0
             status, running_since = "idle", 0
             state = workbuddy_status(raw_status)
@@ -555,7 +569,8 @@ def workbuddy_sessions():
             elif state == "pending" and activity_ms:
                 status = "waiting"  # a turn has happened and the task is waiting for your input
             elif state == "completed":
-                status = finish("idle", activity_ms, 0, "workbuddy", sid)
+                # WorkBuddy clears its own unread flag once you open the task there.
+                status = finish("idle", activity_ms, activity_ms if unread == 0 else 0, "workbuddy", sid)
             out.append({
                 "app": "workbuddy", "id": sid, "title": first_line(title),
                 # Playground tasks run in a generated timestamp folder that means nothing to the user.
