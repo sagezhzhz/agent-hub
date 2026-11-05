@@ -18,7 +18,7 @@ uv pip install --python .build/packaging-env/bin/python -r desktop/requirements-
 .build/packaging-env/bin/python desktop/build.py --dmg
 ```
 
-产物位于 `dist/Agent Hub.app` 和 `dist/Agent-Hub-1.0.4-macOS-arm64.dmg`。构建脚本保留 Python/PyInstaller 许可及上游 Apache-2.0 许可。重新构建会替换 `dist` 内的同名产物，不会改动已安装的应用。
+产物位于 `dist/Agent Hub.app` 和 `dist/Agent-Hub-1.0.5-macOS-arm64.dmg`。构建脚本保留 Python/PyInstaller 许可及上游 Apache-2.0 许可。重新构建会替换 `dist` 内的同名产物，不会改动已安装的应用。
 
 Swift/AppKit 和系统 WebKit 提供原生窗口，PyInstaller 封装后端及 Python 运行环境，灵动岛预先编译。桌面服务优先监听本机 `127.0.0.1:47322`，占用时自动换端口。主进程异常退出后，后端也会自动停止。
 
@@ -29,7 +29,7 @@ Swift/AppKit 和系统 WebKit 提供原生窗口，PyInstaller 封装后端及 P
 ```bash
 security find-identity -v -p codesigning
 .build/packaging-env/bin/python desktop/build.py --dmg \
-  --version 1.0.4 --build-number 5 \
+  --version 1.0.5 --build-number 6 \
   --sign-identity "Developer ID Application: YOUR NAME (TEAMID)"
 ```
 
@@ -47,7 +47,7 @@ xcrun notarytool store-credentials agent-hub-notary \
 
 ```bash
 .build/packaging-env/bin/python desktop/notarize.py \
-  dist/Agent-Hub-1.0.4-macOS-arm64.dmg --keychain-profile agent-hub-notary \
+  dist/Agent-Hub-1.0.5-macOS-arm64.dmg --keychain-profile agent-hub-notary \
   --keychain "$HOME/Library/Keychains/login.keychain-db"
 ```
 
