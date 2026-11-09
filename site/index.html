@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Hub：一眼看清哪个 AI agent 在等你</title>
+<meta name="description" content="把 Codex、Claude、Grok Bot、WorkBuddy 和 Cursor 的对话排进一块本地看板。开源、本地运行，点击卡片直接回到对应对话。">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23201f1c'/%3E%3Crect x='7' y='8' width='4' height='16' rx='2' fill='%23e8a43a'/%3E%3Crect x='14' y='8' width='4' height='11' rx='2' fill='%235fcf93'/%3E%3Crect x='21' y='8' width='4' height='7' rx='2' fill='%237db0f3'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #12110f; --bg-2: #181714; --panel: #1d1c19; --card: #26251f; --card-2: #2d2c26;
+  --text: #f1efe9; --muted: #aeaba1; --faint: #85827a; --line: #2f2d28; --line-2: #3d3a33;
+  --wait: #e8a43a; --done: #5fcf93; --run: #7db0f3; --idle: #85827a;
+  --col-wait: #2a2418; --col-done: #1b271f; --col-run: #1b2330; --col-idle: #211f1c;
+  --serif: "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", ui-serif, Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  interpolate-size: allow-keywords;
+}
+* { box-sizing: border-box; margin: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; background: var(--bg); }
+body { background: var(--bg); color: var(--text); font: 16px/1.65 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: clip; }
+a { color: inherit; text-decoration: none; }
+a:focus-visible, summary:focus-visible, button:focus-visible { outline: 2px solid var(--run); outline-offset: 3px; border-radius: 6px; }
+h1, h2 { font-family: var(--serif); font-weight: 600; letter-spacing: 0; text-wrap: balance; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+/* Nav */
+.nav { position: sticky; top: 0; z-index: 50; background: rgba(18, 17, 15, .82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.nav .wrap { height: 64px; display: flex; align-items: center; gap: 36px; }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 650; font-size: 17px; }
+.logo svg { width: 24px; height: 24px; }
+.nav-links { display: flex; gap: 28px; font-size: 14px; color: var(--muted); margin: 0 auto; }
+.nav-links a:hover { color: var(--text); }
+.nav-right { display: flex; gap: 8px; align-items: center; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 20px; border-radius: 9px; font-size: 15px; font-weight: 600; border: 1px solid transparent; transition: background .2s, border-color .2s, transform .2s var(--ease); white-space: nowrap; }
+.btn:active { transform: translateY(1px); }
+.btn-p { background: var(--text); color: #16150f; }
+.btn-p:hover { background: #fff; }
+.btn-g { background: rgba(18, 17, 15, .55); border-color: var(--line-2); color: var(--text); }
+.btn-g:hover { background: rgba(50, 47, 40, .8); }
+.btn-s { min-height: 38px; padding: 0 14px; font-size: 14px; }
+
+/* Hero */
+.hero { position: relative; margin: 0 12px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
+.sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hero-in { position: relative; padding: 92px 24px 72px; }
+.hero-copy { text-align: center; max-width: 780px; margin: 0 auto 56px; }
+h1 { font-size: clamp(38px, 6vw, 68px); line-height: 1.16; }
+.hero-copy p { margin: 20px auto 0; max-width: 600px; font-size: clamp(16px, 1.6vw, 19px); color: #e0dcd2; }
+.cta { display: flex; justify-content: center; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
+.req { margin-top: 16px; font-size: 13px; color: #cfcabd; }
+
+/* Mac stage */
+.stage { position: relative; max-width: 1120px; margin: 0 auto; background: #0e0d0c; border: 1px solid #45423a; border-radius: 16px; box-shadow: 0 40px 90px rgba(0, 0, 0, .55); overflow: hidden; padding: 58px 16px 16px; }
+.stage.flat { box-shadow: none; }
+.window { background: var(--bg-2); border: 1px solid var(--line); border-radius: 11px; padding: 16px; }
+.win-top { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.nb { display: inline-block; }
+.win-top b { font-size: 16px; white-space: nowrap; }
+.demo-tag { white-space: nowrap; }
+.seg { margin-left: auto; display: flex; background: var(--card); border-radius: 8px; padding: 3px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.seg span { padding: 3px 10px; border-radius: 6px; transition: background .3s, color .3s; }
+.seg .on { background: var(--card-2); color: var(--text); font-weight: 600; }
+.demo-tag { font-size: 12px; color: var(--faint); }
+
+/* Board */
+.bq { container-type: inline-size; }
+.board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.col { border-radius: 10px; padding: 10px; min-height: 440px; background: var(--col-idle); transition: background .4s; }
+.col[data-k=wait] { background: var(--col-wait); }
+.col[data-k=done] { background: var(--col-done); }
+.col[data-k=run] { background: var(--col-run); }
+.col-h { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 650; padding: 2px 4px 9px; white-space: nowrap; }
+.col-h em { font-style: normal; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+.st { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--idle); }
+[data-k=wait] > .col-h .st, .st.wait { background: var(--wait); }
+[data-k=done] > .col-h .st, .st.done { background: var(--done); }
+[data-k=run] > .col-h .st, .st.run { background: var(--run); animation: pulse 1.5s infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+.card { position: relative; display: block; background: var(--card); border: 1px solid #36342d; border-radius: 9px; padding: 9px 11px; margin-bottom: 8px; transition: border-color .25s, background .25s; }
+.card small { display: block; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+.card > b { display: block; font-size: 13.5px; font-weight: 600; line-height: 1.4; margin: 2px 0 6px; }
+.card .q { display: none; font-size: 12px; line-height: 1.5; color: var(--muted); background: rgba(255, 255, 255, .05); border-radius: 6px; padding: 5px 7px; margin-bottom: 7px; }
+.col[data-k=wait] .q { display: block; }
+.card .ft { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.card time { margin-left: auto; color: var(--faint); }
+.badge { width: 17px; height: 17px; border-radius: 5px; font: 700 10px/17px var(--sans); text-align: center; color: #15140f; background: var(--c); flex: none; font-style: normal; }
+.card.hot { border-color: var(--text); background: var(--card-2); }
+.card.flash { animation: flash 1s var(--ease); }
+@keyframes flash { 0% { box-shadow: 0 0 0 0 rgba(241, 239, 233, .5); } 100% { box-shadow: 0 0 0 12px rgba(241, 239, 233, 0); } }
+@container (max-width: 760px) {
+  .board { grid-template-columns: 1fr 1fr; }
+  .col { min-height: 214px; }
+  .card .q, .col[data-k=wait] .q, .card time { display: none; }
+}
+
+/* Island */
+.island { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 230px; background: #000; border-radius: 0 0 16px 16px; z-index: 20; color: #fff; transition: width .5s var(--ease); box-shadow: 0 0 0 1px rgba(255, 255, 255, .06); }
+.island.peek { width: min(380px, 92%); }
+.island.open { width: min(440px, 94%); }
+.i-bar { height: 36px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; font-size: 14px; font-weight: 700; }
+.i-count { display: flex; align-items: center; gap: 6px; color: var(--wait); font-variant-numeric: tabular-nums; }
+.i-count .st { box-shadow: 0 0 0 4px rgba(232, 164, 58, .22); }
+.i-mark { display: flex; gap: 3px; }
+.i-mark i { width: 3px; height: 13px; border-radius: 2px; }
+.i-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s var(--ease); }
+.island.peek .i-body, .island.open .i-body { grid-template-rows: 1fr; }
+.i-clip { overflow: hidden; min-height: 0; }
+.i-pad { padding: 2px 10px 10px; }
+.i-row { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 9px; transition: background .2s; }
+.i-row.hot { background: #232220; }
+.i-row div { min-width: 0; flex: 1; }
+.i-row b { display: block; font-size: 13px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.i-row small { display: block; font-size: 11.5px; color: #99958a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.i-row u { text-decoration: none; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.i-foot { display: flex; justify-content: space-between; font-size: 11.5px; color: #99958a; padding: 7px 8px 0; }
+.c-wait { color: var(--wait); } .c-done { color: var(--done); } .c-run { color: var(--run); }
+
+/* Cursor & app window */
+.cursor { position: absolute; left: 0; top: 0; width: 22px; height: 26px; z-index: 40; pointer-events: none; opacity: 0; transition: transform .75s var(--ease), opacity .3s; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .5)); }
+.cursor.show { opacity: 1; }
+.appwin { position: absolute; left: 50%; bottom: 20px; width: min(520px, 90%); translate: -50% 24px; opacity: 0; transition: translate .45s var(--ease), opacity .3s; background: #201f1c; border: 1px solid var(--line-2); border-radius: 12px; z-index: 30; box-shadow: 0 30px 60px rgba(0, 0, 0, .6); overflow: hidden; }
+.appwin.show { translate: -50% 0; opacity: 1; }
+.titlebar { display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.titlebar > i { width: 9px; height: 9px; border-radius: 50%; background: var(--line-2); }
+.titlebar code { margin-left: auto; font: 11.5px var(--mono); color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msgs { padding: 14px; display: grid; gap: 9px; font-size: 13.5px; line-height: 1.55; }
+.msg { background: var(--card); border-radius: 10px; padding: 8px 11px; max-width: 86%; justify-self: start; }
+.msg.me { justify-self: end; background: #3a3d4a; }
+.msg[hidden] { display: none; }
+
+/* Apps strip */
+.apps { padding: 56px 0 8px; text-align: center; }
+.apps p { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+.apps ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 38px; list-style: none; padding: 0; font-size: 18px; font-weight: 600; color: var(--text); }
+.apps li { display: flex; align-items: center; gap: 9px; }
+.apps .badge { width: 24px; height: 24px; font-size: 13px; line-height: 24px; border-radius: 7px; }
+
+/* Sections with rail */
+.sec { position: relative; padding: 112px 0; border-bottom: 1px solid var(--line); }
+.rail { position: absolute; left: max(24px, calc(50% - 576px)); top: 0; bottom: 0; width: 1px; background: var(--line-2); }
+.rail::before { content: ""; position: absolute; left: -7px; top: 120px; width: 15px; height: 15px; border-radius: 50%; background: var(--bg); border: 3px solid var(--c); box-shadow: 0 0 18px var(--c); }
+.sec-in { padding-left: 64px; }
+.kicker { display: inline-block; font-size: 13px; font-weight: 600; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); padding: 3px 10px; border-radius: 6px; margin-bottom: 16px; }
+h2 { font-size: clamp(30px, 3.6vw, 44px); line-height: 1.24; }
+.lead { color: var(--muted); font-size: 17px; margin-top: 14px; max-width: 520px; }
+.split { display: grid; grid-template-columns: 5fr 7fr; gap: 56px; align-items: center; }
+.split.rev > :first-child { order: 2; }
+.head { margin-bottom: 44px; }
+.points { list-style: none; padding: 0; margin-top: 28px; border-top: 1px solid var(--line); }
+.points li { padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 15px; color: var(--muted); }
+.points b { display: block; color: var(--text); font-weight: 600; }
+.stage.short { padding-top: 16px; }
+
+/* Island feature */
+.wall { position: relative; height: 430px; border-radius: 16px; overflow: hidden; border: 1px solid var(--line-2); background: radial-gradient(90% 80% at 20% 110%, #c76b3d 0%, transparent 60%), radial-gradient(80% 90% at 95% 100%, #6c4a93 0%, transparent 60%), linear-gradient(170deg, #1c2340, #2c2846 60%, #4b3350); }
+.menubar { position: absolute; inset: 0 0 auto; height: 36px; background: rgba(0, 0, 0, .22); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 12.5px; font-weight: 600; }
+.caption { position: absolute; left: 18px; bottom: 16px; font: 12px var(--mono); color: rgba(255, 255, 255, .78); }
+
+/* Jump */
+.jump { display: grid; gap: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+.urlbar { font: 14px var(--mono); padding: 11px 14px; border-radius: 9px; background: #0e0d0c; border: 1px solid var(--line); color: var(--muted); min-height: 44px; white-space: nowrap; overflow: hidden; }
+.urlbar b { color: var(--text); font-weight: 500; }
+.urlbar::after { content: ""; display: inline-block; width: 7px; height: 15px; background: var(--text); margin-left: 2px; vertical-align: -2px; animation: pulse 1s steps(2) infinite; }
+.j-grid { display: grid; grid-template-columns: 150px 1fr; gap: 14px; min-height: 290px; }
+.j-list { display: grid; gap: 6px; align-content: start; }
+.j-row { display: flex; align-items: center; gap: 9px; padding: 10px 11px; border-radius: 9px; font-size: 14px; color: var(--muted); border: 1px solid transparent; transition: .25s; }
+.j-row.on { background: var(--card); border-color: var(--line-2); color: var(--text); }
+.j-win { background: #201f1c; border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden; }
+.j-win.swap { animation: swap .45s var(--ease); }
+@keyframes swap { from { opacity: .2; transform: translateY(10px) scale(.985); } }
+
+/* Sidebar demo */
+.rs { position: relative; background: #0e0d0c; border: 1px solid var(--line-2); border-radius: 16px; overflow: hidden; height: calc(440px * var(--s, 1) + 44px); }
+.rs-label { position: absolute; right: 16px; top: 12px; font: 12px var(--mono); color: var(--muted); z-index: 2; }
+.rs-stage { position: absolute; left: 0; top: 44px; width: 1000px; height: 440px; transform-origin: 0 0; transform: scale(var(--s, 1)); padding: 0 12px; }
+.rs-win { width: 976px; height: 430px; overflow: hidden; background: var(--bg-2); border: 1px solid var(--line); border-radius: 11px 11px 0 0; padding: 12px; transition: width 1s var(--ease); position: relative; }
+.rs-win::after { content: ""; position: absolute; right: 4px; top: 50%; width: 4px; height: 44px; margin-top: -22px; border-radius: 2px; background: var(--muted); }
+.rs-win .board { gap: 8px; }
+.rs-win .col { min-height: 0; }
+.rs-win .card { margin-bottom: 6px; }
+.rs-win .q { display: none !important; }
+@container (max-width: 760px) { .rs-win .board { grid-template-columns: 1fr 1fr; } .rs-win .card time { display: inline; } }
+@container (max-width: 400px) { .rs-win .board { grid-template-columns: 1fr; } }
+
+/* Bento */
+.bento { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px; min-width: 0; }
+.tile h3 { font-family: var(--serif); font-size: 24px; font-weight: 600; }
+.tile > p { color: var(--muted); margin: 6px 0 20px; font-size: 15px; }
+
+/* Keys */
+.k-search { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 8px; background: var(--bg-2); border: 1px solid var(--line); font-size: 13px; color: var(--faint); margin-bottom: 10px; min-height: 38px; transition: border-color .2s; }
+.k-search.on { border-color: var(--run); color: var(--text); }
+.k-list { height: 258px; overflow: hidden; }
+.k-row { padding: 8px 11px; background: var(--card); border: 1px solid transparent; border-radius: 8px; margin-bottom: 7px; font-size: 14px; transition: border-color .2s; }
+.k-row.sel { border-color: var(--run); }
+.k-row[hidden] { display: none; }
+.k-top { display: flex; align-items: center; gap: 8px; }
+.k-top .st { transition: background .3s; }
+.k-top span:last-child { margin-left: auto; font-size: 12px; color: var(--faint); }
+.k-prev { display: none; font-size: 13px; color: var(--muted); padding-top: 6px; line-height: 1.5; }
+.k-row.open .k-prev { display: block; }
+.keys { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+.key { min-width: 40px; height: 40px; padding: 0 10px; display: grid; place-items: center; border-radius: 8px; font: 600 14px var(--mono); background: var(--card); border: 1px solid var(--line-2); border-bottom-width: 3px; color: var(--muted); transition: .12s; }
+.key.down { background: var(--text); color: #16150f; border-color: var(--text); translate: 0 2px; border-bottom-width: 1px; }
+.k-note { font-size: 13px; color: var(--muted); margin-top: 10px; min-height: 21px; }
+
+/* Local */
+.local { display: grid; grid-template-columns: 1.15fr .8fr 1fr; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px; }
+.paths { display: grid; gap: 8px; }
+.path { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-radius: 9px; background: var(--bg-2); border: 1px solid var(--line); font: 12.5px var(--mono); color: var(--muted); transition: .3s; min-width: 0; }
+.path span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.path em { margin-left: auto; font-style: normal; font-size: 11px; color: var(--faint); flex: none; }
+.path.on { border-color: var(--done); color: var(--text); }
+.path.on em { color: var(--done); }
+.lane { height: 3px; margin: 0 16px; background: repeating-linear-gradient(90deg, var(--done) 0 10px, transparent 10px 22px); background-size: 200% 100%; animation: flow 1.1s linear infinite; }
+@keyframes flow { to { background-position: 22px 0; } }
+.hub { border: 1px solid var(--line-2); border-radius: 14px; padding: 22px; background: var(--bg-2); text-align: center; }
+.hub b { font-size: 18px; }
+.hub code { display: block; font: 13px var(--mono); color: var(--done); margin: 4px 0 14px; }
+.hub ul { list-style: none; padding: 0; text-align: left; font-size: 13.5px; color: var(--muted); display: grid; gap: 6px; }
+.hub li::before { content: "✕"; color: var(--wait); margin-right: 8px; font-size: 11px; }
+
+/* Steps */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; list-style: none; padding: 0; counter-reset: s; }
+.steps li { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 26px; }
+.steps li::before { content: counter(s); font: 600 34px var(--serif); color: var(--faint); display: block; }
+.steps b { display: block; font-size: 18px; margin: 8px 0 4px; }
+.steps p { color: var(--muted); font-size: 15px; }
+pre { background: #0e0d0c; border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; font: 14px/1.8 var(--mono); color: var(--text); overflow-x: auto; margin-top: 20px; }
+pre span { color: var(--faint); user-select: none; }
+
+/* FAQ */
+.faq-grid { display: grid; grid-template-columns: 4fr 8fr; gap: 56px; }
+details { border-bottom: 1px solid var(--line); }
+details:first-child { border-top: 1px solid var(--line); }
+summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 20px 0; font-size: 17px; font-weight: 600; min-height: 44px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; font: 400 24px/1 var(--sans); color: var(--muted); transition: transform .3s var(--ease); flex: none; }
+details[open] summary::after { transform: rotate(45deg); }
+details::details-content { block-size: 0; overflow: hidden; transition: block-size .32s var(--ease), content-visibility .32s allow-discrete; }
+details[open]::details-content { block-size: auto; }
+details p { color: var(--muted); padding-bottom: 22px; max-width: 680px; }
+details code { font: 13.5px var(--mono); color: var(--text); background: var(--card); padding: 1px 6px; border-radius: 5px; }
+
+/* Final CTA */
+.final { position: relative; margin: 72px 12px 0; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); text-align: center; }
+.final-in { position: relative; padding: 110px 24px 150px; }
+.final h2 { font-size: clamp(32px, 4.6vw, 56px); }
+.final p { margin-top: 12px; color: #e0dcd2; }
+
+/* Footer */
+footer { padding: 72px 0 40px; }
+.f-top { display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 40px; }
+.f-top > div > p { color: var(--muted); font-size: 14px; margin-top: 12px; max-width: 280px; }
+.f-top h3 { font-size: 13px; color: var(--faint); font-weight: 500; margin-bottom: 12px; }
+.f-top ul { list-style: none; padding: 0; display: grid; gap: 2px; font-size: 14px; }
+.f-top ul a { display: inline-block; padding: 4px 0; color: var(--muted); }
+.f-top ul a:hover { color: var(--text); }
+.legal { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); display: flex; justify-content: space-between; gap: 32px; }
+.legal p:first-child { max-width: 760px; }
+.legal p:last-child { white-space: nowrap; }
+
+@media (max-width: 960px) {
+  .nav-links { display: none; }
+  .nav-right { margin-left: auto; }
+  .rail { display: none; }
+  .sec { padding: 80px 0; }
+  .sec-in { padding-left: 0; }
+  .split, .faq-grid, .bento, .steps { grid-template-columns: 1fr; gap: 32px; }
+  .split.rev > :first-child { order: 0; }
+  .local { grid-template-columns: 1fr; gap: 18px; }
+  .lane { width: 3px; height: 40px; margin: 0 auto; background: repeating-linear-gradient(180deg, var(--done) 0 10px, transparent 10px 22px); background-size: 100% 200%; }
+  @keyframes flow { to { background-position: 0 22px; } }
+  .f-top { grid-template-columns: 1fr 1fr; }
+  .f-top > div:first-child { grid-column: 1 / -1; }
+  .legal { flex-direction: column; gap: 12px; }
+}
+@media (max-width: 640px) {
+  .wrap { padding: 0 16px; }
+  .hero, .final { margin-inline: 8px; }
+  .hero-in { padding: 60px 10px 28px; }
+  .stage { padding: 50px 8px 8px; }
+  .window { padding: 10px; }
+  .card > b { font-size: 12.5px; }
+  .card small { display: none; }
+  .wall { height: 390px; }
+  .tile { padding: 18px; }
+  .j-grid { grid-template-columns: 1fr; min-height: 0; }
+  .j-list { grid-template-columns: repeat(5, 1fr); gap: 4px; }
+  .j-row { justify-content: center; padding: 8px 0; }
+  .j-row span { display: none; }
+  .j-win { min-height: 210px; }
+  .local { padding: 16px; }
+  .nav-right .btn-g { display: none; }
+  .demo-tag { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" aria-label="主导航">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="Agent Hub 首页">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#2d2c26"/><rect x="7" y="8" width="4" height="16" rx="2" fill="#e8a43a"/><rect x="14" y="8" width="4" height="11" rx="2" fill="#5fcf93"/><rect x="21" y="8" width="4" height="7" rx="2" fill="#7db0f3"/></svg>
+      Agent Hub
+    </a>
+    <div class="nav-links">
+      <a href="#board">看板</a><a href="#island">灵动岛</a><a href="#jump">跳转</a><a href="#local">隐私</a><a href="#faq">常见问题</a>
+    </div>
+    <div class="nav-right">
+      <a class="btn btn-g btn-s" href="https://github.com/sagezhzhz/agent-hub">GitHub</a>
+      <a class="btn btn-p btn-s" data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest">下载</a>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+<header class="hero">
+  <canvas class="sky" aria-hidden="true"></canvas>
+  <div class="hero-in">
+    <div class="hero-copy">
+      <h1>一眼看清，<br><span class="nb">哪个 agent</span> <span class="nb">在等你</span></h1>
+      <p>Codex、Claude、Grok Bot、WorkBuddy 和 Cursor 的对话，排进同一块本地看板。点一下卡片，回到那个对话。</p>
+      <div class="cta">
+        <a class="btn btn-p" data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest">下载 macOS 版 →</a>
+        <a class="btn btn-g" href="https://github.com/sagezhzhz/agent-hub">查看源码</a>
+      </div>
+      <p class="req">Apple Silicon · macOS 13 及以上 · 已签名并通过 Apple 公证 · 开源免费</p>
+    </div>
+    <div class="stage" id="hero-demo" role="img" aria-label="产品演示：看板上的对话随状态在四列之间移动，刘海灵动岛同步显示待处理数量，点击卡片后跳回对应应用的对话。">
+      <div class="island">
+        <div class="i-bar"><span class="i-mark"><i style="background:var(--wait)"></i><i style="background:var(--done)"></i><i style="background:var(--run)"></i></span><span class="i-count"><span class="st wait"></span><span data-n>2</span></span></div>
+        <div class="i-body"><div class="i-clip"><div class="i-pad" data-peek></div></div></div>
+      </div>
+      <div class="window">
+        <div class="win-top"><b>Agent Hub</b><span class="demo-tag">演示数据</span><span class="seg"><span class="on">按状态</span><span>按项目</span></span></div>
+        <div class="bq"><div class="board" data-board></div></div>
+      </div>
+      <div class="appwin">
+        <div class="titlebar"><i></i><i></i><i></i>&nbsp;Claude · acme-web<code>claude://… 会话已打开</code></div>
+        <div class="msgs">
+          <div class="msg">迁移脚本会删除旧的 session 表，确认后我再执行。</div>
+          <div class="msg me" hidden data-reply>确认，继续执行。</div>
+        </div>
+      </div>
+      <svg class="cursor" viewBox="0 0 22 26" aria-hidden="true"><path d="M2 2l17 12-8 1.4L7.4 23z" fill="#fff" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+</header>
+
+<section class="apps wrap" aria-label="支持的应用">
+  <p>读取你 Mac 上这些桌面应用的本地数据，没装的自动跳过</p>
+  <ul data-apps></ul>
+</section>
+
+<section class="sec" id="board" style="--c:var(--wait)">
+  <div class="rail"></div>
+  <div class="wrap"><div class="sec-in">
+    <div class="head">
+      <span class="kicker">看板</span>
+      <h2>十几个 agent，<br>排成一块看板</h2>
+      <p class="lead">不用再翻三个应用的侧边栏。按状态看谁需要你，按项目看一件事推进到哪了，随时切换。</p>
+    </div>
+    <div class="stage flat short" id="views-demo" role="img" aria-label="演示：同一批卡片在按状态和按项目两种视图之间自动切换。">
+      <div class="window">
+        <div class="win-top"><b>Agent Hub</b><span class="seg"><span class="on" data-v="status">按状态</span><span data-v="project">按项目</span></span></div>
+        <div class="bq"><div class="board" data-board></div></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<section class="sec" id="island" style="--c:var(--done)">
+  <div class="rail"></div>
+  <div class="wrap"><div class="sec-in split">
+    <div>
+      <span class="kicker">刘海灵动岛</span>
+      <h2>不用切窗口，<br>刘海会告诉你</h2>
+      <p class="lead">有 agent 卡住或做完时，MacBook 刘海两侧自动展开提示。专心写别的，该回去时自然知道。</p>
+      <ul class="points">
+        <li><b>有新动态自动展开</b>新的待处理或刚完成，会弹出来提示一下。</li>
+        <li><b>悬停看列表，点击就跳转</b>鼠标移上去展开，点一行直接回到对话。</li>
+        <li><b>没有刘海也能用</b>外接屏或无刘海的 Mac 上显示在菜单栏正中。</li>
+      </ul>
+    </div>
+    <div class="wall" id="island-demo" role="img" aria-label="演示：刘海灵动岛弹出新待处理提示，鼠标悬停后展开列表，点击一行后待处理数量减一。">
+      <div class="menubar"><span>Finder</span><span>9:41</span></div>
+      <div class="island">
+        <div class="i-bar"><span class="i-mark"><i style="background:var(--wait)"></i><i style="background:var(--done)"></i><i style="background:var(--run)"></i></span><span class="i-count"><span class="st wait"></span><span data-n>1</span></span></div>
+        <div class="i-body"><div class="i-clip"><div class="i-pad" data-peek></div></div></div>
+      </div>
+      <div class="caption" data-cap>收起时只占刘海两侧</div>
+      <svg class="cursor" viewBox="0 0 22 26" aria-hidden="true"><path d="M2 2l17 12-8 1.4L7.4 23z" fill="#fff" stroke="#000" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    </div>
+  </div></div>
+</section>
+
+<section class="sec" id="jump" style="--c:var(--run)">
+  <div class="rail"></div>
+  <div class="wrap"><div class="sec-in split rev">
+    <div>
+      <span class="kicker">点击跳转</span>
+      <h2>点一下，<br>回到那个对话</h2>
+      <p class="lead">Agent Hub 用每个应用自己的链接协议打开会话，直接落在那段对话上，不用再找一遍。</p>
+      <ul class="points">
+        <li><b>五个应用，一种操作</b>每张卡片都能跳回原应用。</li>
+        <li><b>打开即已看</b>处理过的对话会离开「刚完成 · 未查看」。</li>
+      </ul>
+    </div>
+    <div class="jump" id="jump-demo" role="img" aria-label="演示：依次通过 codex、claude、grokbot、workbuddy-ai、cursor 链接协议打开各应用中的对话。">
+      <div class="urlbar"><b data-url></b></div>
+      <div class="j-grid">
+        <div class="j-list" data-list></div>
+        <div class="j-win" data-win></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<section class="sec" id="fit" style="--c:var(--wait)">
+  <div class="rail"></div>
+  <div class="wrap"><div class="sec-in">
+    <div class="head">
+      <span class="kicker">随手可用</span>
+      <h2>放在旁边，<br>手不用离开键盘</h2>
+    </div>
+    <div class="bento">
+      <div class="tile" style="grid-column:1/-1">
+        <h3>拖窄就是侧边栏</h3>
+        <p>宽屏四列，半屏两列两行，缩窄后变成一列竖排，正好贴在 agent 应用旁边。</p>
+        <div class="rs" id="rs-demo" role="img" aria-label="演示：窗口宽度变化时，看板从四列变为两列两行，再变为一列。">
+          <div class="rs-label" data-label></div>
+          <div class="rs-stage"><div class="rs-win"><div class="bq"><div class="board" data-board></div></div></div></div>
+        </div>
+      </div>
+      <div class="tile" id="keys-demo" role="img" aria-label="演示：用方向键选择卡片，空格预览最后一条消息，U 标为已看，斜杠搜索，回车打开。">
+        <h3>全程键盘操作</h3>
+        <p>选择、预览、标记、搜索、打开，都有快捷键。</p>
+        <div class="k-search" data-search>搜索</div>
+        <div class="k-list" data-list></div>
+        <div class="keys" data-keys></div>
+        <div class="k-note" data-note></div>
+      </div>
+      <div class="tile">
+        <h3>状态不靠猜</h3>
+        <p>四种状态直接来自各应用存在本地的记录。</p>
+        <ul class="points" style="margin-top:0">
+          <li><b><span class="c-wait">需要你处理</span></b>会话正在等你输入或确认。</li>
+          <li><b><span class="c-done">刚完成 · 未查看</span></b>做完了，而你还没看过结果。</li>
+          <li><b><span class="c-run">运行中</span></b>这一轮已经开始，还没结束。</li>
+          <li><b>最近</b>其余的近期对话，需要时一搜就有。</li>
+        </ul>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<section class="sec" id="local" style="--c:var(--done)">
+  <div class="rail"></div>
+  <div class="wrap"><div class="sec-in">
+    <div class="head">
+      <span class="kicker">本地只读</span>
+      <h2>你的对话，<br>不离开你的 Mac</h2>
+      <p class="lead">Agent Hub 只读取各应用存在本机的文件，服务只监听 127.0.0.1，也拒绝来自其他网页的请求。</p>
+    </div>
+    <div class="local" id="local-demo" role="img" aria-label="示意图：Agent Hub 只读取五个应用的本地目录，数据只在本机面板中显示。">
+      <div class="paths" data-paths></div>
+      <div class="lane"></div>
+      <div class="hub">
+        <b>Agent Hub</b><code>127.0.0.1:47321</code>
+        <ul><li>不上传对话内容</li><li>不修改应用的数据</li><li>不收集使用数据</li></ul>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<section class="sec" id="start" style="--c:var(--run)">
+  <div class="rail"></div>
+  <div class="wrap"><div class="sec-in">
+    <div class="head"><span class="kicker">开始使用</span><h2>三步装好，无需配置</h2></div>
+    <ol class="steps">
+      <li><b>下载安装包</b><p>下载适用于 M 系列 Mac 的 DMG，已完成签名和公证。</p></li>
+      <li><b>拖入应用程序</b><p>不需要终端、Python 或 Xcode，之后会自动更新。</p></li>
+      <li><b>打开就能看到</b><p>自动发现已安装的应用，对话立刻排进看板。</p></li>
+    </ol>
+    <pre aria-label="从源码运行的命令"><span># 或者从源码运行，只需要 Python 3.8+</span>
+git clone https://github.com/sagezhzhz/agent-hub.git
+cd agent-hub &amp;&amp; python3 agent_hub.py</pre>
+  </div></div>
+</section>
+
+<section class="sec" id="faq" style="--c:var(--idle);border-bottom:0">
+  <div class="rail"></div>
+  <div class="wrap"><div class="sec-in faq-grid">
+    <h2>常见问题</h2>
+    <div>
+      <details name="faq" open><summary>支持哪些应用？</summary><p>ChatGPT 桌面版里的 Codex、Claude 桌面版 Code 页面的会话、Grok Bot、WorkBuddy，以及 Cursor Agents 窗口里的云端 agent。Claude 的普通聊天记录存在云端，Cursor 编辑器里的本地对话暂不支持，这两类不会显示。</p></details>
+      <details name="faq"><summary>我的对话会被上传吗？</summary><p>不会。读取和展示都在本机完成，服务只监听 127.0.0.1，也不会修改任何应用的数据。唯一的联网行为来自桌面版的自动更新：它会向 GitHub 检查新版本，不包含你的对话。从源码运行时没有这一项。</p></details>
+      <details name="faq"><summary>为什么 Codex 的会话不会出现在「需要你处理」？</summary><p>Codex 的本地数据里没有「等你批准操作」这项记录。同样，Codex 没有可靠的已读标记，所以「已看」以你从面板打开的记录为准。</p></details>
+      <details name="faq"><summary>支持 Intel Mac 或 Windows 吗？</summary><p>安装包目前只支持 Apple Silicon（M 系列）Mac，macOS 13 及以上，暂未提供 Intel Mac 或 Windows 版本。</p></details>
+      <details name="faq"><summary>我的 Mac 没有刘海，灵动岛还能用吗？</summary><p>可以。没有刘海的 Mac 上，它会显示在菜单栏正中。</p></details>
+      <details name="faq"><summary>应用更新后读不出数据怎么办？</summary><p>这些应用没有提供公开接口，存储格式变化时某一列可能读不出来，其他部分照常工作。运行 <code>python3 agent_hub.py --check</code> 查看自检结果，再提 Issue 贴上输出。输出里只有应用版本、安装位置和对话数量，不含标题或内容。</p></details>
+      <details name="faq"><summary>能接入其他应用吗？</summary><p>可以。每个应用就是 <code>agent_hub.py</code> 里的一个读取函数加一项配置，页面会自动显示，步骤见 CONTRIBUTING.md，欢迎提 PR。</p></details>
+      <details name="faq"><summary>收费吗？</summary><p>不收费。Agent Hub 以 Apache-2.0 协议开源，安装包和源码都在 GitHub 上。</p></details>
+    </div>
+  </div></div>
+</section>
+
+<section class="final">
+  <canvas class="sky" aria-hidden="true"></canvas>
+  <div class="final-in">
+    <h2>让等你的 agent，<br>不再白等</h2>
+    <p>免费、开源，一分钟装好。</p>
+    <div class="cta">
+      <a class="btn btn-p" data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest">下载 macOS 版 →</a>
+      <a class="btn btn-g" href="https://github.com/sagezhzhz/agent-hub">在 GitHub 上查看</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="f-top">
+      <div>
+        <a class="logo" href="#top">
+          <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#2d2c26"/><rect x="7" y="8" width="4" height="16" rx="2" fill="#e8a43a"/><rect x="14" y="8" width="4" height="11" rx="2" fill="#5fcf93"/><rect x="21" y="8" width="4" height="7" rx="2" fill="#7db0f3"/></svg>
+          Agent Hub
+        </a>
+        <p>一块本地面板，统一查看各个桌面应用里的 AI agent 对话。</p>
+      </div>
+      <div><h3>产品</h3><ul>
+        <li><a href="#board">看板</a></li><li><a href="#island">灵动岛</a></li><li><a href="#jump">点击跳转</a></li><li><a href="#local">本地只读</a></li><li><a href="#faq">常见问题</a></li>
+      </ul></div>
+      <div><h3>下载</h3><ul>
+        <li><a data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest">macOS 安装包</a></li>
+        <li><a href="https://github.com/sagezhzhz/agent-hub/releases">全部版本</a></li>
+        <li><a href="https://github.com/sagezhzhz/agent-hub/blob/main/desktop/README.md">桌面版构建说明</a></li>
+      </ul></div>
+      <div><h3>开源</h3><ul>
+        <li><a href="https://github.com/sagezhzhz/agent-hub">GitHub</a></li>
+        <li><a href="https://github.com/sagezhzhz/agent-hub/issues/new/choose">提交 Issue</a></li>
+        <li><a href="https://github.com/sagezhzhz/agent-hub/blob/main/CONTRIBUTING.md">接入更多应用</a></li>
+        <li><a href="https://github.com/sagezhzhz/agent-hub/blob/main/LICENSE">Apache-2.0 协议</a></li>
+      </ul></div>
+    </div>
+    <div class="legal">
+      <p>Agent Hub 是独立项目，与 OpenAI、Anthropic、xAI、腾讯、Anysphere 没有任何关联，也未获得它们的认可。文中提到的产品名称仅用于说明兼容性。页面演示使用虚构数据。</p>
+      <p>© <span data-year>2026</span> Agent Hub</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  // Bump this when a new release ships; every download button follows it.
+  const VERSION = '1.0.5';
+  const dmg = `https://github.com/sagezhzhz/agent-hub/releases/download/v${VERSION}/Agent-Hub-${VERSION}-macOS-arm64.dmg`;
+  document.querySelectorAll('[data-dmg]').forEach(a => a.href = dmg);
+  document.querySelector('[data-year]').textContent = new Date().getFullYear();
+
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const h = html => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; };
+
+  // Letter badges only: the project ships no third-party trademarked icons.
+  const APPS = {
+    codex: { n: 'Codex', l: 'C', c: '#8ea2ff', u: 'codex://', sc: 'codex' },
+    claude: { n: 'Claude', l: 'C', c: '#e39a78', u: 'claude://', sc: 'claude' },
+    grok: { n: 'Grok Bot', l: 'G', c: '#c9c6bd', u: 'grokbot://', sc: 'grokbot' },
+    buddy: { n: 'WorkBuddy', l: 'W', c: '#62d6a5', u: 'workbuddy-ai://', sc: 'workbuddy-ai' },
+    cursor: { n: 'Cursor', l: 'C', c: '#e8e4d8', u: 'cursor://', sc: 'cursor' },
+  };
+  const badge = a => `<i class="badge" style="--c:${APPS[a].c}">${APPS[a].l}</i>`;
+  $('[data-apps]').innerHTML = Object.keys(APPS).map(a => `<li>${badge(a)}${APPS[a].n}</li>`).join('');
+
+  const CARDS = {
+    login: ['acme-web', '重构登录流程', 'claude', '4 分钟前', '迁移脚本会删除旧的 session 表，确认后我再执行。'],
+    social: ['内容运营小组', '社媒文案助手', 'grok', '12 分钟前', '这篇的语气合适吗？要不要改得口语一点？'],
+    dark: ['acme-web', '修复深色模式对比度', 'claude', '9 分钟前'],
+    pay: ['acme-api', '为支付模块补充单测', 'codex', '26 分钟前'],
+    ci: ['acme-api', '修复 CI 里不稳定的测试', 'cursor', '40 分钟前'],
+    docs: ['acme-web', '设计系统组件文档', 'claude', '3 分钟'],
+    deck: ['reports', '生成季度汇报 PPT', 'buddy', '5 分钟', '数据口径按财年还是自然年？'],
+    deps: ['acme-api', '升级依赖并修复构建', 'codex', '7 分钟'],
+    route: ['acme-web', '迁移到新的路由方案', 'cursor', '14 分钟'],
+    tf: ['acme-web', '整理 TestFlight 发布步骤', 'codex', '1 小时前'],
+    week: ['内容运营小组', '周报汇总', 'grok', '3 小时前'],
+    quote: ['reports', '对比三家供应商报价', 'buddy', '5 小时前'],
+  };
+  const cardEl = id => {
+    const [p, t, a, ago, q] = CARDS[id];
+    return h(`<article class="card" data-id="${id}"><small>${p}</small><b>${t}</b>${q ? `<div class="q">${q}</div>` : ''}<div class="ft">${badge(a)}${APPS[a].n}<time>${ago}</time></div></article>`);
+  };
+  const STATUS = [['wait', '需要你处理'], ['done', '刚完成 · 未查看'], ['run', '运行中'], ['idle', '最近']];
+
+  function flip(root, mutate) {
+    const seen = new Map($$('[data-id]', root).map(e => [e.dataset.id, e.getBoundingClientRect()]));
+    mutate();
+    if (REDUCED) return;
+    $$('[data-id]', root).forEach(e => {
+      const a = seen.get(e.dataset.id), b = e.getBoundingClientRect();
+      if (!a || !b.width) return;
+      const dx = a.left - b.left, dy = a.top - b.top;
+      if (!dx && !dy) return;
+      e.style.zIndex = 5;
+      e.animate([{ transform: `translate(${dx}px,${dy}px)` }, { transform: 'none' }], { duration: 640, easing: 'cubic-bezier(.2,.8,.2,1)' })
+        .finished.then(() => e.style.zIndex = '', () => {});
+    });
+  }
+
+  class Board {
+    constructor(el, layout, cols = STATUS) {
+      this.el = el;
+      this.els = {};
+      this.setCols(cols);
+      this.set(layout, false);
+    }
+    setCols(cols) {
+      this.el.replaceChildren(...cols.map(([k, t]) => h(`<section class="col" data-k="${k}"><div class="col-h"><span class="st"></span>${t}<em>0</em></div></section>`)));
+    }
+    set(layout, animate = true) {
+      const run = () => {
+        for (const [k, ids] of Object.entries(layout)) {
+          const col = $(`[data-k="${k}"]`, this.el);
+          ids.forEach(id => col.append(this.els[id] ||= cardEl(id)));
+        }
+        this.count();
+      };
+      animate ? flip(this.el, run) : run();
+    }
+    move(id, k, top = false) {
+      flip(this.el, () => {
+        const col = $(`[data-k="${k}"]`, this.el);
+        if (top) col.children[0].after(this.els[id]); else col.append(this.els[id]);
+        this.count();
+      });
+      const e = this.els[id];
+      e.classList.remove('flash'); void e.offsetWidth; e.classList.add('flash');
+    }
+    count() { $$('.col', this.el).forEach(c => $('em', c).textContent = c.children.length - 1); }
+    n(k) { return $(`[data-k="${k}"]`, this.el).children.length - 1; }
+  }
+
+  // Runs a looping script only while it is on screen.
+  function demo(el, fn) {
+    if (REDUCED) return;
+    const c = {
+      visible: false,
+      wait: ms => new Promise(res => {
+        let left = ms, last;
+        const step = t => {
+          if (c.visible && last !== undefined) left -= Math.min(t - last, 100);
+          last = t;
+          left <= 0 ? res() : requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }),
+    };
+    new IntersectionObserver(([e]) => c.visible = e.isIntersecting, { threshold: .15 }).observe(el);
+    (async () => { for (;;) await fn(c); })();
+  }
+
+  function pointAt(cursor, stage, target, ox = .6, oy = .55) {
+    const s = stage.getBoundingClientRect(), t = target.getBoundingClientRect();
+    cursor.style.transform = `translate(${t.left - s.left + t.width * ox}px,${t.top - s.top + t.height * oy}px)`;
+    cursor.classList.add('show');
+  }
+  const row = (a, t, sub, cls, tag, hot) => `<div class="i-row${hot ? ' hot' : ''}">${badge(a)}<div><b>${t}</b><small>${sub}</small></div><u class="${cls}">${tag}</u></div>`;
+
+  /* Hero: the whole loop in one screen */
+  {
+    const stage = $('#hero-demo'), start = { wait: ['login', 'social'], done: ['dark', 'pay'], run: ['docs', 'deck', 'deps'], idle: ['tf', 'week'] };
+    const b = new Board($('[data-board]', stage), start);
+    const island = $('.island', stage), peek = $('[data-peek]', stage), n = $('[data-n]', stage);
+    const cur = $('.cursor', stage), app = $('.appwin', stage), reply = $('[data-reply]', stage);
+    const sync = () => n.textContent = b.n('wait');
+    demo(stage, async c => {
+      await c.wait(1600);
+      b.move('deps', 'done', true);
+      peek.innerHTML = row('codex', '升级依赖并修复构建', 'Codex · acme-api', 'c-done', '刚完成');
+      island.classList.add('peek');
+      await c.wait(2200);
+      island.classList.remove('peek');
+      await c.wait(900);
+      b.move('deck', 'wait'); sync();
+      peek.innerHTML = row('buddy', '生成季度汇报 PPT', '数据口径按财年还是自然年？', 'c-wait', '需要你');
+      island.classList.add('peek');
+      await c.wait(2400);
+      island.classList.remove('peek');
+      await c.wait(500);
+      const card = b.els.login;
+      pointAt(cur, stage, card);
+      await c.wait(850);
+      card.classList.add('hot');
+      await c.wait(350);
+      app.classList.add('show');
+      await c.wait(1300);
+      reply.hidden = false;
+      await c.wait(1300);
+      app.classList.remove('show');
+      card.classList.remove('hot');
+      await c.wait(300);
+      cur.classList.remove('show');
+      b.move('login', 'run'); sync();
+      await c.wait(1100);
+      b.move('dark', 'idle');
+      await c.wait(2400);
+      reply.hidden = true;
+      b.set(start); sync();
+      await c.wait(900);
+    });
+  }
+
+  /* Views: same cards, two groupings */
+  {
+    const stage = $('#views-demo');
+    const byStatus = { wait: ['login', 'social'], done: ['dark', 'pay', 'ci'], run: ['docs', 'deck'], idle: ['tf', 'quote'] };
+    const byProject = { wait: ['login', 'dark', 'docs', 'tf'], done: ['pay', 'ci'], run: ['deck', 'quote'], idle: ['social'] };
+    const b = new Board($('[data-board]', stage), byStatus);
+    const cols = $$('.col', b.el), segs = $$('.seg span', stage);
+    const heads = { status: STATUS.map(s => s[1]), project: ['acme-web', 'acme-api', 'reports', '内容运营小组'] };
+    const show = v => {
+      b.set(v === 'status' ? byStatus : byProject);
+      cols.forEach((col, i) => {
+        col.dataset.k = STATUS[i][0];
+        col.style.background = v === 'project' ? 'var(--col-idle)' : '';
+        $('.col-h', col).childNodes[1].textContent = heads[v][i];
+        $('.st', col).style.cssText = v === 'project' ? 'background:var(--idle);animation:none' : '';
+      });
+      b.count();
+      segs.forEach(s => s.classList.toggle('on', s.dataset.v === v));
+    };
+    demo(stage, async c => { await c.wait(3200); show('project'); await c.wait(3600); show('status'); });
+  }
+
+  /* Island */
+  {
+    const stage = $('#island-demo'), island = $('.island', stage), peek = $('[data-peek]', stage), n = $('[data-n]', stage), cap = $('[data-cap]', stage), cur = $('.cursor', stage);
+    const list = (wait, hot) => `${wait === 2 ? row('claude', '重构登录流程', '确认后我再执行', 'c-wait', '需要你', hot) : ''}${row('grok', '社媒文案助手', 'Grok Bot · 内容运营小组', 'c-wait', '需要你')}${row('cursor', '修复 CI 里不稳定的测试', 'Cursor · acme-api', 'c-done', '刚完成')}${row('codex', '设计系统组件文档', 'Codex · design-system', 'c-run', '运行中')}<div class="i-foot"><span>${wait} 个需要你 · 1 个完成 · 1 个运行中</span><span>打开 Agent Hub</span></div>`;
+    demo(stage, async c => {
+      n.textContent = 1; island.className = 'island'; cap.textContent = '收起时只占刘海两侧';
+      await c.wait(1700);
+      n.textContent = 2;
+      peek.innerHTML = row('claude', '重构登录流程', '迁移脚本会删除旧表，确认后再执行', 'c-wait', '需要你');
+      island.classList.add('peek'); cap.textContent = '新的待处理，自动提示';
+      await c.wait(2500);
+      island.classList.remove('peek');
+      await c.wait(900);
+      pointAt(cur, stage, island, .62, .7);
+      await c.wait(800);
+      peek.innerHTML = list(2, false);
+      island.classList.add('open'); cap.textContent = '鼠标移上去，展开列表';
+      await c.wait(1500);
+      const first = $('.i-row', peek);
+      pointAt(cur, stage, first, .55, .6);
+      await c.wait(800);
+      first.classList.add('hot');
+      await c.wait(600);
+      cap.textContent = '点一行，直接回到对话';
+      await c.wait(1300);
+      island.classList.remove('open');
+      cur.classList.remove('show');
+      n.textContent = 1;
+      await c.wait(1600);
+    });
+  }
+
+  /* Jump */
+  {
+    const stage = $('#jump-demo'), list = $('[data-list]', stage), win = $('[data-win]', stage), url = $('[data-url]', stage);
+    const SCENES = [
+      ['codex', 'acme-api', '升级依赖并修复构建', '构建已通过，顺带更新了 3 个过期依赖。', '8f2a41'],
+      ['claude', 'acme-web', '重构登录流程', '迁移脚本会删除旧的 session 表，确认后我再执行。', 'c07b12'],
+      ['grok', '内容运营小组', '社媒文案助手', '这篇的语气合适吗？要不要改得口语一点？', '41ad9e'],
+      ['buddy', 'reports', '生成季度汇报 PPT', '数据口径按财年还是自然年？', '6e03fb'],
+      ['cursor', 'acme-api', '修复 CI 里不稳定的测试', '定位到是时区问题，修复已经推送。', 'b92c70'],
+    ];
+    list.innerHTML = SCENES.map(([a]) => `<div class="j-row">${badge(a)}<span>${APPS[a].n}</span></div>`).join('');
+    const rows = $$('.j-row', list);
+    const paint = ([a, p, t, m]) => {
+      win.innerHTML = `<div class="titlebar"><i></i><i></i><i></i>&nbsp;${APPS[a].n} · ${p}</div><div class="msgs"><div class="msg me">${t}</div><div class="msg">${m}</div></div>`;
+      win.classList.remove('swap'); void win.offsetWidth; win.classList.add('swap');
+    };
+    const select = i => rows.forEach((r, j) => r.classList.toggle('on', i === j));
+    select(1); paint(SCENES[1]); url.textContent = `${APPS.claude.u}…/${SCENES[1][4]}`;
+    let i = 1;
+    demo(stage, async c => {
+      await c.wait(2400);
+      i = (i + 1) % SCENES.length;
+      select(i);
+      const s = `${APPS[SCENES[i][0]].u}…/${SCENES[i][4]}`;
+      for (let k = 0; k <= s.length; k++) { url.textContent = s.slice(0, k); await c.wait(26); }
+      await c.wait(200);
+      paint(SCENES[i]);
+    });
+  }
+
+  /* Sidebar width */
+  {
+    const stage = $('#rs-demo'), win = $('.rs-win', stage), label = $('[data-label]', stage);
+    new Board($('[data-board]', stage), { wait: ['login', 'social'], done: ['dark', 'pay'], run: ['docs', 'deps'], idle: ['tf', 'week'] });
+    const fit = () => stage.style.setProperty('--s', Math.min(1, stage.clientWidth / 1000));
+    fit(); new ResizeObserver(fit).observe(stage);
+    const STOPS = [[976, '全屏 · 四列'], [640, '半屏 · 两列两行'], [330, '侧边栏 · 一列']];
+    const go = ([w, t]) => { win.style.width = w + 'px'; label.textContent = t; };
+    go(STOPS[0]);
+    let i = 0;
+    demo(stage, async c => { await c.wait(2600); i = (i + 1) % STOPS.length; go(STOPS[i]); });
+  }
+
+  /* Keyboard */
+  {
+    const stage = $('#keys-demo'), list = $('[data-list]', stage), keysEl = $('[data-keys]', stage), note = $('[data-note]', stage), search = $('[data-search]', stage);
+    const ROWS = [['重构登录流程', 'wait', '确认后我再执行。'], ['修复深色模式对比度', 'done', '已调整 6 处颜色，对比度全部达标。'], ['为支付模块补充单测', 'done', '新增 18 个用例，覆盖率 92%。'], ['设计系统组件文档', 'run', '正在生成 Button 文档…']];
+    const KEYS = { up: '↑', down: '↓', space: '空格', u: 'U', slash: '/', enter: '↵' };
+    keysEl.innerHTML = Object.entries(KEYS).map(([k, v]) => `<span class="key" data-key="${k}">${v}</span>`).join('');
+    const paint = () => list.innerHTML = ROWS.map(([t, s, m], i) => `<div class="k-row${i === 0 ? ' sel' : ''}"><div class="k-top"><span class="st ${s}"></span><span>${t}</span><span></span></div><div class="k-prev">${m}</div></div>`).join('');
+    paint();
+    note.textContent = '方向键选择，回车打开';
+    const rows = () => $$('.k-row', list);
+    let sel = 0;
+    const setSel = i => { sel = i; rows().forEach((r, j) => r.classList.toggle('sel', j === i)); };
+    demo(stage, async c => {
+      const press = async (k, say, act) => {
+        const e = $(`[data-key=${k}]`, keysEl);
+        e.classList.add('down'); act(); note.textContent = say;
+        await c.wait(220); e.classList.remove('down'); await c.wait(1000);
+      };
+      paint(); setSel(0); search.textContent = '搜索'; search.classList.remove('on');
+      await c.wait(900);
+      await press('down', '↓ 移到下一张', () => setSel(1));
+      await press('space', '空格 预览最后一条消息', () => rows()[1].classList.add('open'));
+      await c.wait(500);
+      await press('space', '再按一次收起', () => rows()[1].classList.remove('open'));
+      await press('u', 'U 标为已看', () => { const s = $('.st', rows()[1]); s.className = 'st'; $('.k-top span:last-child', rows()[1]).textContent = '已看'; });
+      await press('slash', '/ 开始搜索', () => { search.classList.add('on'); search.textContent = ''; });
+      for (const ch of ['支', '支付']) { search.textContent = ch; await c.wait(260); }
+      rows().forEach(r => r.hidden = !$('.k-top', r).textContent.includes('支付'));
+      setSel(2);
+      await c.wait(800);
+      await press('enter', '↵ 在对应应用里打开', () => {});
+      await c.wait(900);
+    });
+  }
+
+  /* Local paths */
+  {
+    const stage = $('#local-demo'), box = $('[data-paths]', stage);
+    const P = ['~/.codex', '~/Library/…/Claude/claude-code-sessions', '~/Library/…/Grok Bot', '~/.workbuddy-ai', '~/Library/…/Cursor'];
+    box.innerHTML = P.map(p => `<div class="path"><span>${p}</span><em>只读</em></div>`).join('');
+    const rows = $$('.path', box);
+    rows[0].classList.add('on');
+    let i = 0;
+    demo(stage, async c => { await c.wait(1100); rows[i].classList.remove('on'); i = (i + 1) % rows.length; rows[i].classList.add('on'); });
+  }
+
+  /* Skyline canvases: every light on the ridges is an agent. */
+  $$('canvas.sky').forEach((cv, idx) => {
+    const ctx = cv.getContext('2d');
+    let W, H, D, lights = [], stars = [], bg, visible = false;
+    let seed = 7 + idx * 13;
+    const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    const ridge = (x, base, amp, p) => base + Math.sin(x * .0031 + p) * amp + Math.sin(x * .0083 + p * 2.3) * amp * .45 + Math.sin(x * .021 + p * .7) * amp * .16;
+    function build() {
+      const r = cv.getBoundingClientRect();
+      D = Math.min(devicePixelRatio || 1, 2);
+      W = r.width; H = r.height;
+      if (!W || !H) return;
+      cv.width = W * D; cv.height = H * D;
+      seed = 7 + idx * 13;
+      bg = document.createElement('canvas');
+      bg.width = cv.width; bg.height = cv.height;
+      const g = bg.getContext('2d');
+      g.scale(D, D);
+      const view = idx === 0 ? Math.min(H, 760) : H;
+      const sky = g.createLinearGradient(0, 0, 0, view);
+      sky.addColorStop(0, '#11142a'); sky.addColorStop(.38, '#2b2547'); sky.addColorStop(.68, '#8a4a4c'); sky.addColorStop(.88, '#d9853f'); sky.addColorStop(1, '#efb25a');
+      g.fillStyle = sky; g.fillRect(0, 0, W, H);
+      stars = Array.from({ length: Math.round(W / 9) }, () => [rnd() * W, rnd() * view * .55, rnd() * 1.1 + .3, rnd() * 6.28]);
+      lights = [];
+      const layers = [[.66, 34, '#7a4a52', 0], [.74, 42, '#553746', 8], [.82, 46, '#37283a', 16], [.92, 40, '#1f1a29', 26]];
+      layers.forEach(([b, amp, color, count], li) => {
+        const base = view * b, p = rnd() * 10 + li;
+        g.fillStyle = color;
+        g.beginPath(); g.moveTo(0, H);
+        for (let x = 0; x <= W + 8; x += 8) g.lineTo(x, ridge(x, base, amp, p));
+        g.lineTo(W, H); g.closePath(); g.fill();
+        for (let i = 0; i < count * (W / 1300); i++) {
+          const x = rnd() * W;
+          lights.push({ x, y: ridge(x, base, amp, p) + 8 + rnd() * 34, r: 1.2 + li * .4, c: ['#e8a43a', '#5fcf93', '#7db0f3'][Math.floor(rnd() * 3)], ph: rnd() * 6.28, sp: .4 + rnd() * 1.1 });
+        }
+      });
+      if (idx === 0) { g.fillStyle = '#1f1a29'; g.fillRect(0, view, W, H - view); }
+      paint(0);
+    }
+    function paint(t) {
+      if (!bg || !W) return;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(bg, 0, 0);
+      ctx.setTransform(D, 0, 0, D, 0, 0);
+      ctx.fillStyle = '#fff';
+      for (const [x, y, r, ph] of stars) { ctx.globalAlpha = .3 + .4 * (Math.sin(t * .0012 + ph) + 1) / 2; ctx.fillRect(x, y, r, r); }
+      for (const l of lights) {
+        const a = .35 + .65 * (Math.sin(t * .001 * l.sp + l.ph) + 1) / 2;
+        ctx.globalAlpha = a * .22; ctx.fillStyle = l.c; ctx.beginPath(); ctx.arc(l.x, l.y, l.r * 4, 0, 6.28); ctx.fill();
+        ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, 6.28); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    build();
+    let rt; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(build, 120); }).observe(cv);
+    if (!REDUCED) {
+      new IntersectionObserver(([e]) => visible = e.isIntersecting).observe(cv);
+      let last = 0;
+      const loop = t => { if (visible && t - last > 50) { last = t; paint(t); } requestAnimationFrame(loop); };
+      requestAnimationFrame(loop);
+    }
+  });
+})();
+</script>
+</body>
+</html>
