@@ -7,6 +7,8 @@
 <meta name="description" content="把 Codex、Claude、Grok Bot、WorkBuddy 和 Cursor 的对话排进一块本地看板。开源、本地运行，点击卡片直接回到对应对话。">
 <meta name="color-scheme" content="light">
 <link rel="icon" href="assets/favicon.png">
+<link rel="alternate" hreflang="zh-CN" href="https://sagezhzhz.github.io/agent-hub/?lang=zh">
+<link rel="alternate" hreflang="en" href="https://sagezhzhz.github.io/agent-hub/?lang=en">
 <style>
 :root {
   --bg: #ffffff; --surface: #f7f6f3; --surface-2: #f1f0ef; --line: #e9e9e9;
@@ -35,6 +37,8 @@ h1, h2, h3 { font-weight: 400; text-wrap: balance; }
 .nav-links { display: flex; gap: 26px; font-size: 14px; color: var(--ink-2); }
 .nav-links a:hover { color: var(--muted); }
 .nav-right { display: flex; gap: 14px; align-items: center; margin-left: auto; font-size: 14px; }
+.lang { min-height: 36px; padding: 0 6px; border: 0; background: none; color: var(--ink-2); font: inherit; cursor: pointer; }
+.lang:hover { color: var(--muted); }
 .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 24px; border-radius: 999px; font-size: 15px; font-weight: 500; transition: background .2s, transform .2s var(--ease); white-space: nowrap; }
 .btn:active { transform: scale(.98); }
 .btn-p { background: var(--ink-2); color: var(--on-ink); }
@@ -191,15 +195,16 @@ footer { padding: 72px 0 40px; }
 </head>
 <body>
 
-<nav class="nav" aria-label="主导航">
+<nav class="nav" aria-label="主导航" data-en-aria="Main navigation">
   <div class="wrap">
-    <a class="logo" href="#top" aria-label="Agent Hub 首页"><img src="assets/logo.png" alt="" width="28" height="28">Agent Hub</a>
+    <a class="logo" href="#top" aria-label="Agent Hub 首页" data-en-aria="Agent Hub home"><img src="assets/logo.png" alt="" width="28" height="28">Agent Hub</a>
     <div class="nav-links">
-      <a href="#tour">功能</a><a href="#states">状态</a><a href="#local">隐私</a><a href="#faq">常见问题</a>
+      <a href="#tour" data-en="Features">功能</a><a href="#states" data-en="Status">状态</a><a href="#local" data-en="Privacy">隐私</a><a href="#faq" data-en="FAQ">常见问题</a>
     </div>
     <div class="nav-right">
+      <button class="lang" type="button" data-lang-toggle>English</button>
       <a class="gh" href="https://github.com/sagezhzhz/agent-hub">GitHub</a>
-      <a class="btn btn-p btn-s" data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest">下载</a>
+      <a class="btn btn-p btn-s" data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest" data-en="Download">下载</a>
     </div>
   </div>
 </nav>
@@ -208,22 +213,22 @@ footer { padding: 72px 0 40px; }
 <header class="hero">
   <div class="wrap">
     <div class="chip" data-chip aria-hidden="true"><span class="dot" style="background:var(--wait)"></span><span>3 个对话在等你</span></div>
-    <h1>一眼看清，<br><span class="nb">哪个 agent</span> <span class="nb">在等你</span></h1>
-    <p class="sub">Codex、Claude、Grok Bot、WorkBuddy 和 Cursor 的对话，排进同一块本地看板。点一下卡片，回到那个对话。</p>
+    <h1 data-en="See which agent&lt;br&gt;is waiting on you">一眼看清，<br><span class="nb">哪个 agent</span> <span class="nb">在等你</span></h1>
+    <p class="sub" data-en="Conversations from Codex, Claude, Grok Bot, WorkBuddy and Cursor on one local board. Click a card to jump back in.">Codex、Claude、Grok Bot、WorkBuddy 和 Cursor 的对话，排进同一块本地看板。点一下卡片，回到那个对话。</p>
     <div class="cta">
-      <a class="btn btn-p" data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest">下载 macOS 版</a>
-      <a class="btn btn-g" href="https://github.com/sagezhzhz/agent-hub">查看源码</a>
+      <a class="btn btn-p" data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest" data-en="Download for macOS">下载 macOS 版</a>
+      <a class="btn btn-g" href="https://github.com/sagezhzhz/agent-hub" data-en="View source">查看源码</a>
     </div>
-    <p class="req">Apple Silicon · macOS 13 及以上 · 已签名并通过 Apple 公证 · 开源免费</p>
+    <p class="req" data-en="Apple Silicon · macOS 13 or later · Signed and notarized by Apple · Free and open source">Apple Silicon · macOS 13 及以上 · 已签名并通过 Apple 公证 · 开源免费</p>
     <div class="frame">
-      <video data-auto muted loop playsinline preload="auto" poster="media/hero.jpg" src="media/hero.mp4" aria-label="Agent Hub 真实界面录屏：对话随状态变化在四列之间移动。"></video>
+      <video data-auto muted loop playsinline preload="auto" data-media="hero" poster="media/hero.jpg" src="media/hero.mp4" aria-label="Agent Hub 真实界面录屏：对话随状态变化在四列之间移动。" data-en-aria="Screen recording of the real Agent Hub interface: conversations move between four columns as their status changes."></video>
     </div>
-    <p class="cap">Agent Hub 真实界面，使用内置演示数据录制。</p>
+    <p class="cap" data-en="The real Agent Hub interface, recorded with its built-in demo data.">Agent Hub 真实界面，使用内置演示数据录制。</p>
   </div>
 </header>
 
-<section class="apps wrap" aria-label="支持的应用">
-  <p>读取你 Mac 上这些桌面应用的本地数据，没装的自动跳过</p>
+<section class="apps wrap" aria-label="支持的应用" data-en-aria="Supported apps">
+  <p data-en="Reads local data from these desktop apps on your Mac and skips any you don&#x27;t have">读取你 Mac 上这些桌面应用的本地数据，没装的自动跳过</p>
   <ul>
     <li><img class="ic" src="assets/codex.png" alt="">Codex</li>
     <li><img class="ic" src="assets/claude.png" alt="">Claude</li>
@@ -236,53 +241,53 @@ footer { padding: 72px 0 40px; }
 <section class="sec" id="tour">
   <div class="wrap">
     <div class="center">
-      <h2>十几个 agent，排成一块看板</h2>
-      <p class="lead">不用再翻三个应用的侧边栏。谁需要你，谁刚做完，谁还在跑，都在这里。</p>
+      <h2 data-en="A dozen agents, one board">十几个 agent，排成一块看板</h2>
+      <p class="lead" data-en="Stop digging through three apps&#x27; sidebars. Who needs you, who just finished and who&#x27;s still running, all in one place.">不用再翻三个应用的侧边栏。谁需要你，谁刚做完，谁还在跑，都在这里。</p>
     </div>
-    <div class="tabs"><div class="tablist" role="navigation" aria-label="功能导览">
+    <div class="tabs"><div class="tablist" role="navigation" aria-label="功能导览" data-en-aria="Feature tour">
       <span class="tab-ind"></span>
-      <a href="#s-board">看板</a><a href="#s-island">灵动岛</a><a href="#s-jump">点击跳转</a><a href="#s-fit">侧边栏</a><a href="#s-keys">键盘</a>
+      <a href="#s-board" data-en="Board">看板</a><a href="#s-island" data-en="Notch island">灵动岛</a><a href="#s-jump" data-en="Jump back">点击跳转</a><a href="#s-fit" data-en="Sidebar">侧边栏</a><a href="#s-keys" data-en="Keyboard">键盘</a>
     </div></div>
 
     <div class="tour">
       <div>
         <article class="step" id="s-board" data-fig="views">
-          <p class="eyebrow">看板</p>
-          <h3>按状态看谁需要你，按项目看进度</h3>
-          <p>同一批对话，两种看法，一键切换。</p>
+          <p class="eyebrow" data-en="Board">看板</p>
+          <h3 data-en="See who needs you, or how each project is going">按状态看谁需要你，按项目看进度</h3>
+          <p data-en="The same conversations, two views, one click apart.">同一批对话，两种看法，一键切换。</p>
           <ul class="facts">
-            <li><b>按状态</b>需要你处理、刚完成、运行中、最近，四列排好。</li>
-            <li><b>按项目</b>同一文件夹下的 Codex 和 Claude 会话放在一起，Grok Bot 按群组归类。</li>
+            <li data-en="&lt;b&gt;By status&lt;/b&gt;Four columns: Needs you, Just finished, Running and Recent."><b>按状态</b>需要你处理、刚完成、运行中、最近，四列排好。</li>
+            <li data-en="&lt;b&gt;By project&lt;/b&gt;Codex and Claude sessions from the same folder sit together. Grok bots group by team."><b>按项目</b>同一文件夹下的 Codex 和 Claude 会话放在一起，Grok Bot 按群组归类。</li>
           </ul>
         </article>
         <article class="step" id="s-island" data-fig="island">
-          <p class="eyebrow">刘海灵动岛</p>
-          <h3>不用切窗口，刘海会告诉你</h3>
-          <p>有 agent 卡住或做完时，MacBook 刘海两侧自动展开提示。</p>
+          <p class="eyebrow" data-en="Notch island">刘海灵动岛</p>
+          <h3 data-en="Stay in your window. The notch will tell you">不用切窗口，刘海会告诉你</h3>
+          <p data-en="When an agent gets stuck or finishes, the MacBook notch opens up to let you know.">有 agent 卡住或做完时，MacBook 刘海两侧自动展开提示。</p>
           <ul class="facts">
-            <li><b>有新动态自动展开</b>新的待处理或刚完成，会弹出来提示一下。</li>
-            <li><b>悬停看列表，点击就跳转</b>鼠标移上去展开，点一行直接回到对话。</li>
-            <li><b>没有刘海也能用</b>没有刘海的 Mac 上显示在菜单栏正中。</li>
+            <li data-en="&lt;b&gt;Opens when something changes&lt;/b&gt;Anything that starts waiting or just finished pops up briefly."><b>有新动态自动展开</b>新的待处理或刚完成，会弹出来提示一下。</li>
+            <li data-en="&lt;b&gt;Hover for the list, click to jump&lt;/b&gt;Move the pointer over it, then click a row to go straight to that conversation."><b>悬停看列表，点击就跳转</b>鼠标移上去展开，点一行直接回到对话。</li>
+            <li data-en="&lt;b&gt;No notch? Still works&lt;/b&gt;On other Macs it sits at the top center of the menu bar."><b>没有刘海也能用</b>没有刘海的 Mac 上显示在菜单栏正中。</li>
           </ul>
         </article>
         <article class="step" id="s-jump" data-fig="jump">
-          <p class="eyebrow">点击跳转</p>
-          <h3>点一下，回到那个对话</h3>
-          <p>用每个应用自己的链接协议打开会话，直接落在那段对话上。</p>
+          <p class="eyebrow" data-en="Jump back">点击跳转</p>
+          <h3 data-en="One click back to the conversation">点一下，回到那个对话</h3>
+          <p data-en="Agent Hub uses each app&#x27;s own URL scheme, so you land right on that conversation.">用每个应用自己的链接协议打开会话，直接落在那段对话上。</p>
           <ul class="facts">
-            <li><b>先看一眼再决定</b>按空格预览最后一条消息，不用离开看板。</li>
-            <li><b>五个应用，一种操作</b>每张卡片都能跳回原应用。</li>
+            <li data-en="&lt;b&gt;Peek before you switch&lt;/b&gt;Press Space to read the last message without leaving the board."><b>先看一眼再决定</b>按空格预览最后一条消息，不用离开看板。</li>
+            <li data-en="&lt;b&gt;Five apps, one gesture&lt;/b&gt;Every card opens in the app it came from."><b>五个应用，一种操作</b>每张卡片都能跳回原应用。</li>
           </ul>
         </article>
         <article class="step" id="s-fit" data-fig="fit">
-          <p class="eyebrow">适配侧边栏</p>
-          <h3>拖窄，就是侧边栏</h3>
-          <p>宽屏四列，半屏两列两行，缩窄后变成一列竖排，正好贴在 agent 应用旁边。</p>
+          <p class="eyebrow" data-en="Fits a sidebar">适配侧边栏</p>
+          <h3 data-en="Drag it narrow, and it&#x27;s a sidebar">拖窄，就是侧边栏</h3>
+          <p data-en="Four columns when wide, two by two at half screen, and a single column right beside your agent app.">宽屏四列，半屏两列两行，缩窄后变成一列竖排，正好贴在 agent 应用旁边。</p>
         </article>
         <article class="step" id="s-keys" data-fig="keys">
-          <p class="eyebrow">键盘操作</p>
-          <h3>手不用离开键盘</h3>
-          <p>方向键选择，回车打开，空格预览，<code style="font:14px var(--mono)">U</code> 标为已看，<code style="font:14px var(--mono)">/</code> 搜索。</p>
+          <p class="eyebrow" data-en="Keyboard">键盘操作</p>
+          <h3 data-en="Keep your hands on the keyboard">手不用离开键盘</h3>
+          <p data-en="Arrows to move, Enter to open, Space to peek, &lt;code style=&quot;font:14px var(--mono)&quot;&gt;U&lt;/code&gt; to mark as viewed, &lt;code style=&quot;font:14px var(--mono)&quot;&gt;/&lt;/code&gt; to search.">方向键选择，回车打开，空格预览，<code style="font:14px var(--mono)">U</code> 标为已看，<code style="font:14px var(--mono)">/</code> 搜索。</p>
         </article>
       </div>
       <div class="stage"><div class="stack" data-stack></div><p class="cap" data-cap></p></div>
@@ -293,15 +298,15 @@ footer { padding: 72px 0 40px; }
 <section class="sec" id="states" style="padding-top:40px">
   <div class="wrap pin">
     <div>
-      <p class="eyebrow">状态不靠猜</p>
-      <h2>四种状态，<br>排出你的优先级</h2>
-      <p class="lead">状态直接来自各应用存在本地的记录。你只需要从最左边开始处理。</p>
+      <p class="eyebrow" data-en="No guessing">状态不靠猜</p>
+      <h2 data-en="Four statuses,&lt;br&gt;one clear order">四种状态，<br>排出你的优先级</h2>
+      <p class="lead" data-en="Status comes straight from what each app stores locally. Just start from the left.">状态直接来自各应用存在本地的记录。你只需要从最左边开始处理。</p>
     </div>
     <ul class="states">
-      <li style="--c:var(--wait)"><span class="s-ic"></span><div><b>需要你处理</b><p>会话正在等你输入或确认。</p></div><em>先处理</em></li>
-      <li style="--c:var(--done)"><span class="s-ic"></span><div><b>刚完成 · 未查看</b><p>做完了，而你还没看过结果。</p></div><em>去验收</em></li>
-      <li style="--c:var(--run)"><span class="s-ic"></span><div><b>运行中</b><p>这一轮已经开始，还没结束。</p></div><em>不用管</em></li>
-      <li style="--c:#c9c6bd"><span class="s-ic"></span><div><b>最近</b><p>其余的近期对话，需要时一搜就有。</p></div><em>需要时找</em></li>
+      <li style="--c:var(--wait)"><span class="s-ic"></span><div><b data-en="Needs you">需要你处理</b><p data-en="The conversation is waiting for your input or approval.">会话正在等你输入或确认。</p></div><em data-en="Do first">先处理</em></li>
+      <li style="--c:var(--done)"><span class="s-ic"></span><div><b data-en="Just finished">刚完成 · 未查看</b><p data-en="It&#x27;s done, and you haven&#x27;t looked at the result yet.">做完了，而你还没看过结果。</p></div><em data-en="Review">去验收</em></li>
+      <li style="--c:var(--run)"><span class="s-ic"></span><div><b data-en="Running">运行中</b><p data-en="This turn has started and hasn&#x27;t finished.">这一轮已经开始，还没结束。</p></div><em data-en="Leave it">不用管</em></li>
+      <li style="--c:#c9c6bd"><span class="s-ic"></span><div><b data-en="Recent">最近</b><p data-en="Everything else from lately, one search away.">其余的近期对话，需要时一搜就有。</p></div><em data-en="When needed">需要时找</em></li>
     </ul>
   </div>
 </section>
@@ -309,31 +314,31 @@ footer { padding: 72px 0 40px; }
 <section class="sec" id="local">
   <div class="wrap local">
     <div>
-      <p class="eyebrow">本地只读</p>
-      <h2>你的对话，<br>不离开你的 Mac</h2>
-      <p class="lead">Agent Hub 只读取各应用存在本机的文件，服务只监听本机地址，也拒绝来自其他网页的请求。</p>
-      <ul class="no"><li>不上传对话内容</li><li>不修改任何应用的数据</li><li>不收集使用数据</li></ul>
+      <p class="eyebrow" data-en="Local and read-only">本地只读</p>
+      <h2 data-en="Your conversations&lt;br&gt;stay on your Mac">你的对话，<br>不离开你的 Mac</h2>
+      <p class="lead" data-en="Agent Hub only reads the files each app keeps on your Mac. Its server listens on localhost only and rejects requests from other websites.">Agent Hub 只读取各应用存在本机的文件，服务只监听本机地址，也拒绝来自其他网页的请求。</p>
+      <ul class="no"><li data-en="Never uploads your conversations">不上传对话内容</li><li data-en="Never changes any app&#x27;s data">不修改任何应用的数据</li><li data-en="Collects no usage data">不收集使用数据</li></ul>
     </div>
     <div class="paths">
-      <div class="path"><img class="ic" src="assets/codex.png" alt=""><span>~/.codex</span><em>只读</em></div>
-      <div class="path"><img class="ic" src="assets/claude.png" alt=""><span>~/Library/…/Claude/claude-code-sessions</span><em>只读</em></div>
-      <div class="path"><img class="ic" src="assets/grok.png" alt=""><span>~/Library/…/Grok Bot</span><em>只读</em></div>
-      <div class="path"><img class="ic" src="assets/workbuddy.png" alt=""><span>~/.workbuddy-ai</span><em>只读</em></div>
-      <div class="path"><img class="ic" src="assets/cursor.png" alt=""><span>~/Library/…/Cursor</span><em>只读</em></div>
-      <div class="to"><span>只在本机面板显示</span><code>127.0.0.1:47321</code></div>
+      <div class="path"><img class="ic" src="assets/codex.png" alt=""><span>~/.codex</span><em data-en="Read-only">只读</em></div>
+      <div class="path"><img class="ic" src="assets/claude.png" alt=""><span>~/Library/…/Claude/claude-code-sessions</span><em data-en="Read-only">只读</em></div>
+      <div class="path"><img class="ic" src="assets/grok.png" alt=""><span>~/Library/…/Grok Bot</span><em data-en="Read-only">只读</em></div>
+      <div class="path"><img class="ic" src="assets/workbuddy.png" alt=""><span>~/.workbuddy-ai</span><em data-en="Read-only">只读</em></div>
+      <div class="path"><img class="ic" src="assets/cursor.png" alt=""><span>~/Library/…/Cursor</span><em data-en="Read-only">只读</em></div>
+      <div class="to"><span data-en="Shown only on your local board">只在本机面板显示</span><code>127.0.0.1:47321</code></div>
     </div>
   </div>
 </section>
 
 <section class="sec" id="start">
   <div class="wrap">
-    <div class="center"><h2>三步装好，无需配置</h2></div>
+    <div class="center"><h2 data-en="Three steps, no setup">三步装好，无需配置</h2></div>
     <ol class="how">
-      <li><b>下载安装包</b><p>下载适用于 M 系列 Mac 的 DMG，已完成签名和公证。</p></li>
-      <li><b>拖入应用程序</b><p>不需要终端、Python 或 Xcode，之后会自动更新。</p></li>
-      <li><b>打开就能看到</b><p>自动发现已安装的应用，对话立刻排进看板。</p></li>
+      <li data-en="&lt;b&gt;Download&lt;/b&gt;&lt;p&gt;Get the DMG for Apple Silicon Macs, signed and notarized.&lt;/p&gt;"><b>下载安装包</b><p>下载适用于 M 系列 Mac 的 DMG，已完成签名和公证。</p></li>
+      <li data-en="&lt;b&gt;Drag to Applications&lt;/b&gt;&lt;p&gt;No Terminal, Python or Xcode needed, and it updates itself.&lt;/p&gt;"><b>拖入应用程序</b><p>不需要终端、Python 或 Xcode，之后会自动更新。</p></li>
+      <li data-en="&lt;b&gt;Open it&lt;/b&gt;&lt;p&gt;It finds your installed apps and fills the board right away.&lt;/p&gt;"><b>打开就能看到</b><p>自动发现已安装的应用，对话立刻排进看板。</p></li>
     </ol>
-    <pre aria-label="从源码运行的命令"><span># 或者从源码运行，只需要 Python 3.8+</span>
+    <pre aria-label="从源码运行的命令" data-en-aria="Commands to run from source"><span data-en="# Or run from source. All you need is Python 3.8+"># 或者从源码运行，只需要 Python 3.8+</span>
 git clone https://github.com/sagezhzhz/agent-hub.git
 cd agent-hub &amp;&amp; python3 agent_hub.py</pre>
   </div>
@@ -342,18 +347,18 @@ cd agent-hub &amp;&amp; python3 agent_hub.py</pre>
 <section class="sec" id="faq" style="padding-top:40px">
   <div class="wrap faq">
     <div>
-      <h2>常见问题<span>现在就开始用</span></h2>
-      <a class="btn btn-p" data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest">下载 macOS 版</a>
+      <h2 data-en="Your questions, answered&lt;span&gt;Get started today&lt;/span&gt;">常见问题<span>现在就开始用</span></h2>
+      <a class="btn btn-p" data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest" data-en="Download for macOS">下载 macOS 版</a>
     </div>
     <div>
-      <details name="faq" open><summary>支持哪些应用？</summary><p>ChatGPT 桌面版里的 Codex、Claude 桌面版 Code 页面的会话、Grok Bot、WorkBuddy，以及 Cursor Agents 窗口里的云端 agent。Claude 的普通聊天记录存在云端，Cursor 编辑器里的本地对话暂不支持，这两类不会显示。</p></details>
-      <details name="faq"><summary>我的对话会被上传吗？</summary><p>不会。读取和展示都在本机完成，服务只监听 127.0.0.1，也不会修改任何应用的数据。唯一的联网行为来自桌面版的自动更新：它会向 GitHub 检查新版本，不包含你的对话。从源码运行时没有这一项。</p></details>
-      <details name="faq"><summary>为什么 Codex 的会话不会出现在「需要你处理」？</summary><p>Codex 的本地数据里没有「等你批准操作」这项记录。同样，Codex 没有可靠的已读标记，所以「已看」以你从面板打开的记录为准。</p></details>
-      <details name="faq"><summary>支持 Intel Mac 或 Windows 吗？</summary><p>安装包目前只支持 Apple Silicon（M 系列）Mac，macOS 13 及以上，暂未提供 Intel Mac 或 Windows 版本。</p></details>
-      <details name="faq"><summary>我的 Mac 没有刘海，灵动岛还能用吗？</summary><p>可以。没有刘海的 Mac 上，它会显示在菜单栏正中。</p></details>
-      <details name="faq"><summary>应用更新后读不出数据怎么办？</summary><p>这些应用没有提供公开接口，存储格式变化时某一列可能读不出来，其他部分照常工作。运行 <code>python3 agent_hub.py --check</code> 查看自检结果，再提 Issue 贴上输出。输出里只有应用版本、安装位置和对话数量，不含标题或内容。</p></details>
-      <details name="faq"><summary>能接入其他应用吗？</summary><p>可以。每个应用就是 <code>agent_hub.py</code> 里的一个读取函数加一项配置，页面会自动显示，步骤见 CONTRIBUTING.md，欢迎提 PR。</p></details>
-      <details name="faq"><summary>收费吗？</summary><p>不收费。Agent Hub 以 Apache-2.0 协议开源，安装包和源码都在 GitHub 上。</p></details>
+      <details name="faq" open><summary data-en="Which apps are supported?">支持哪些应用？</summary><p data-en="Codex in the ChatGPT desktop app, sessions on the Code page of the Claude desktop app, Grok Bot, WorkBuddy, and cloud agents in Cursor&#x27;s Agents window. Regular Claude chats live in the cloud and local conversations in the Cursor editor aren&#x27;t supported yet, so neither appears.">ChatGPT 桌面版里的 Codex、Claude 桌面版 Code 页面的会话、Grok Bot、WorkBuddy，以及 Cursor Agents 窗口里的云端 agent。Claude 的普通聊天记录存在云端，Cursor 编辑器里的本地对话暂不支持，这两类不会显示。</p></details>
+      <details name="faq"><summary data-en="Are my conversations uploaded?">我的对话会被上传吗？</summary><p data-en="No. Reading and display happen on your Mac, the server listens only on 127.0.0.1, and no app&#x27;s data is changed. The only network activity is the desktop app&#x27;s auto-update, which asks GitHub for new versions and sends none of your conversations. Running from source doesn&#x27;t do this.">不会。读取和展示都在本机完成，服务只监听 127.0.0.1，也不会修改任何应用的数据。唯一的联网行为来自桌面版的自动更新：它会向 GitHub 检查新版本，不包含你的对话。从源码运行时没有这一项。</p></details>
+      <details name="faq"><summary data-en="Why don&#x27;t Codex sessions appear under Needs you?">为什么 Codex 的会话不会出现在「需要你处理」？</summary><p data-en="Codex doesn&#x27;t record locally that it&#x27;s waiting for your approval. It has no reliable read marker either, so a session counts as viewed once you open it from the board.">Codex 的本地数据里没有「等你批准操作」这项记录。同样，Codex 没有可靠的已读标记，所以「已看」以你从面板打开的记录为准。</p></details>
+      <details name="faq"><summary data-en="Does it support Intel Macs or Windows?">支持 Intel Mac 或 Windows 吗？</summary><p data-en="The installer currently supports Apple Silicon Macs on macOS 13 or later. There&#x27;s no Intel Mac or Windows build yet.">安装包目前只支持 Apple Silicon（M 系列）Mac，macOS 13 及以上，暂未提供 Intel Mac 或 Windows 版本。</p></details>
+      <details name="faq"><summary data-en="Does the island work without a notch?">我的 Mac 没有刘海，灵动岛还能用吗？</summary><p data-en="Yes. On Macs without a notch, it appears at the top center of the menu bar.">可以。没有刘海的 Mac 上，它会显示在菜单栏正中。</p></details>
+      <details name="faq"><summary data-en="What if an app update breaks reading its data?">应用更新后读不出数据怎么办？</summary><p data-en="These apps have no public API, so a storage format change can stop one app from being read while the rest keep working. Run &lt;code&gt;python3 agent_hub.py --check&lt;/code&gt; and paste the output into an issue. It only includes app versions, install locations and conversation counts, never titles or content.">这些应用没有提供公开接口，存储格式变化时某一列可能读不出来，其他部分照常工作。运行 <code>python3 agent_hub.py --check</code> 查看自检结果，再提 Issue 贴上输出。输出里只有应用版本、安装位置和对话数量，不含标题或内容。</p></details>
+      <details name="faq"><summary data-en="Can I add other apps?">能接入其他应用吗？</summary><p data-en="Yes. Each app is one reader function plus one config entry in &lt;code&gt;agent_hub.py&lt;/code&gt;, and the page picks it up automatically. See CONTRIBUTING.md. PRs are welcome.">可以。每个应用就是 <code>agent_hub.py</code> 里的一个读取函数加一项配置，页面会自动显示，步骤见 CONTRIBUTING.md，欢迎提 PR。</p></details>
+      <details name="faq"><summary data-en="Is it free?">收费吗？</summary><p data-en="Yes. Agent Hub is open source under Apache-2.0, and the installer and source are both on GitHub.">不收费。Agent Hub 以 Apache-2.0 协议开源，安装包和源码都在 GitHub 上。</p></details>
     </div>
   </div>
 </section>
@@ -361,11 +366,11 @@ cd agent-hub &amp;&amp; python3 agent_hub.py</pre>
 <section class="wrap">
   <div class="final">
     <img src="assets/logo.png" alt="" width="72" height="72">
-    <h2>让等你的 agent，不再白等</h2>
-    <p>免费、开源，一分钟装好。</p>
+    <h2 data-en="Stop leaving your agents waiting">让等你的 agent，不再白等</h2>
+    <p data-en="Free, open source, and installed in a minute.">免费、开源，一分钟装好。</p>
     <div class="cta">
-      <a class="btn btn-p" data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest">下载 macOS 版</a>
-      <a class="btn btn-g" style="background:var(--bg)" href="https://github.com/sagezhzhz/agent-hub">在 GitHub 上查看</a>
+      <a class="btn btn-p" data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest" data-en="Download for macOS">下载 macOS 版</a>
+      <a class="btn btn-g" style="background:var(--bg)" href="https://github.com/sagezhzhz/agent-hub" data-en="View on GitHub">在 GitHub 上查看</a>
     </div>
   </div>
 </section>
@@ -376,25 +381,25 @@ cd agent-hub &amp;&amp; python3 agent_hub.py</pre>
     <div class="f-top">
       <div>
         <a class="logo" href="#top"><img src="assets/logo.png" alt="" width="28" height="28">Agent Hub</a>
-        <p>一块本地面板，统一查看各个桌面应用里的 AI agent 对话。</p>
+        <p data-en="One local board for AI agent conversations across your desktop apps.">一块本地面板，统一查看各个桌面应用里的 AI agent 对话。</p>
       </div>
-      <div><h3>产品</h3><ul>
-        <li><a href="#s-board">看板</a></li><li><a href="#s-island">灵动岛</a></li><li><a href="#s-jump">点击跳转</a></li><li><a href="#local">本地只读</a></li><li><a href="#faq">常见问题</a></li>
+      <div><h3 data-en="Product">产品</h3><ul>
+        <li><a href="#s-board" data-en="Board">看板</a></li><li><a href="#s-island" data-en="Notch island">灵动岛</a></li><li><a href="#s-jump" data-en="Jump back">点击跳转</a></li><li><a href="#local" data-en="Local and read-only">本地只读</a></li><li><a href="#faq" data-en="FAQ">常见问题</a></li>
       </ul></div>
-      <div><h3>下载</h3><ul>
-        <li><a data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest">macOS 安装包</a></li>
-        <li><a href="https://github.com/sagezhzhz/agent-hub/releases">全部版本</a></li>
-        <li><a href="https://github.com/sagezhzhz/agent-hub/blob/main/desktop/README.md">桌面版构建说明</a></li>
+      <div><h3 data-en="Download">下载</h3><ul>
+        <li><a data-dmg href="https://github.com/sagezhzhz/agent-hub/releases/latest" data-en="macOS installer">macOS 安装包</a></li>
+        <li><a href="https://github.com/sagezhzhz/agent-hub/releases" data-en="All releases">全部版本</a></li>
+        <li><a href="https://github.com/sagezhzhz/agent-hub/blob/main/desktop/README.md" data-en="Desktop build guide">桌面版构建说明</a></li>
       </ul></div>
-      <div><h3>开源</h3><ul>
+      <div><h3 data-en="Open source">开源</h3><ul>
         <li><a href="https://github.com/sagezhzhz/agent-hub">GitHub</a></li>
-        <li><a href="https://github.com/sagezhzhz/agent-hub/issues/new/choose">提交 Issue</a></li>
-        <li><a href="https://github.com/sagezhzhz/agent-hub/blob/main/CONTRIBUTING.md">接入更多应用</a></li>
-        <li><a href="https://github.com/sagezhzhz/agent-hub/blob/main/LICENSE">Apache-2.0 协议</a></li>
+        <li><a href="https://github.com/sagezhzhz/agent-hub/issues/new/choose" data-en="Report an issue">提交 Issue</a></li>
+        <li><a href="https://github.com/sagezhzhz/agent-hub/blob/main/CONTRIBUTING.md" data-en="Add more apps">接入更多应用</a></li>
+        <li><a href="https://github.com/sagezhzhz/agent-hub/blob/main/LICENSE" data-en="Apache-2.0 license">Apache-2.0 协议</a></li>
       </ul></div>
     </div>
     <div class="legal">
-      <p>Agent Hub 是独立项目，与 OpenAI、Anthropic、xAI、腾讯、Anysphere 没有任何关联，也未获得它们的认可。文中提到的产品名称和图标归各自权利人所有，仅用于说明兼容性。页面演示为真实界面，使用内置的虚构数据录制。</p>
+      <p data-en="Agent Hub is an independent project and is not affiliated with or endorsed by OpenAI, Anthropic, xAI, Tencent or Anysphere. Product names and icons belong to their respective owners and are used only to describe compatibility. Demos show the real interface, recorded with built-in made-up data.">Agent Hub 是独立项目，与 OpenAI、Anthropic、xAI、腾讯、Anysphere 没有任何关联，也未获得它们的认可。文中提到的产品名称和图标归各自权利人所有，仅用于说明兼容性。页面演示为真实界面，使用内置的虚构数据录制。</p>
       <p>© <span data-year>2026</span> Agent Hub</p>
     </div>
   </div>
@@ -411,12 +416,23 @@ cd agent-hub &amp;&amp; python3 agent_hub.py</pre>
   const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const FIGS = {
-    views: ['切换「按状态」和「按项目」，卡片重新归类。', 'Agent Hub 真实界面录屏：在按状态和按项目视图之间切换。'],
-    island: ['灵动岛真实界面：新提示自动展开，悬停显示列表。', 'Agent Hub 灵动岛真实渲染：弹出提示后，展开待处理列表。'],
-    jump: ['按空格预览，一键在对应应用中打开。', 'Agent Hub 真实界面录屏：预览不同应用的对话，并显示在对应应用中打开的按钮。'],
-    fit: ['随窗口宽度自动变成四列、两列、一列。', 'Agent Hub 真实界面录屏：窗口变窄时布局自动调整。'],
-    keys: ['右下角显示当前按键。', 'Agent Hub 真实界面录屏：用键盘选择、标记和搜索对话。'],
+    views: { zh: ['切换「按状态」和「按项目」，卡片重新归类。', 'Agent Hub 真实界面录屏：在按状态和按项目视图之间切换。'], en: ['Switch between By status and By project, and the cards regroup.', 'Screen recording of the real Agent Hub interface: switching between status and project views.'] },
+    island: { zh: ['灵动岛真实界面：新提示自动展开，悬停显示列表。', 'Agent Hub 灵动岛真实渲染：弹出提示后，展开待处理列表。'], en: ['The real notch island: new alerts open by themselves, and hovering shows the list.', 'The real Agent Hub notch island: an alert pops up, then the list of conversations opens.'] },
+    jump: { zh: ['按空格预览，一键在对应应用中打开。', 'Agent Hub 真实界面录屏：预览不同应用的对话，并显示在对应应用中打开的按钮。'], en: ['Press Space to peek, then open it in its own app.', 'Screen recording of the real Agent Hub interface: peeking at conversations from different apps, with a button to open each in its app.'] },
+    fit: { zh: ['随窗口宽度自动变成四列、两列、一列。', 'Agent Hub 真实界面录屏：窗口变窄时布局自动调整。'], en: ['Four columns, two, or one, following the window width.', 'Screen recording of the real Agent Hub interface: the layout adapts as the window narrows.'] },
+    keys: { zh: ['右下角显示当前按键。', 'Agent Hub 真实界面录屏：用键盘选择、标记和搜索对话。'], en: ['The current key is shown at the bottom right.', 'Screen recording of the real Agent Hub interface: selecting, marking and searching conversations from the keyboard.'] },
   };
+  const LINES = {
+    zh: [['var(--wait)', '3 个对话在等你'], ['var(--done)', '4 个刚刚完成'], ['var(--run)', '4 个正在运行']],
+    en: [['var(--wait)', '3 agents need you'], ['var(--done)', '4 just finished'], ['var(--run)', '4 still running']],
+  };
+  const META = {
+    zh: ['Agent Hub：一眼看清哪个 AI agent 在等你', '把 Codex、Claude、Grok Bot、WorkBuddy 和 Cursor 的对话排进一块本地看板。开源、本地运行，点击卡片直接回到对应对话。'],
+    en: ['Agent Hub: see which AI agent is waiting on you', 'One local board for your conversations in Codex, Claude, Grok Bot, WorkBuddy and Cursor. Open source and local. Click a card to jump back in.'],
+  };
+  let lang = 'zh', lineIndex = 0;
+  const safeStore = { get() { try { return localStorage.getItem('hub.site.lang'); } catch { return null; } }, set(v) { try { localStorage.setItem('hub.site.lang', v); } catch {} } };
+  const mediaPath = (k, ext) => `media/${lang === 'en' ? 'en/' : ''}${k}.${ext}`;
 
   const play = v => {
     if (REDUCED) return;
@@ -430,7 +446,7 @@ cd agent-hub &amp;&amp; python3 agent_hub.py</pre>
     const k = step.dataset.fig;
     const fig = document.createElement('figure');
     fig.className = 'fig frame';
-    fig.innerHTML = `<video muted loop playsinline preload="none" poster="media/${k}.jpg" src="media/${k}.mp4" aria-label="${FIGS[k][1]}"></video>`;
+    fig.innerHTML = `<video muted loop playsinline preload="none" data-media="${k}"></video>`;
     fig.dataset.k = k;
     return fig;
   });
@@ -458,7 +474,7 @@ cd agent-hub &amp;&amp; python3 agent_hub.py</pre>
       ind.style.width = tabs[i].offsetWidth + 'px';
       ind.style.transform = `translateX(${tabs[i].offsetLeft}px)`;
       tablist.scrollTo({ left: tabs[i].offsetLeft - 60, behavior: REDUCED ? 'auto' : 'smooth' });
-      cap.textContent = FIGS[steps[i].dataset.fig][0];
+      cap.textContent = FIGS[steps[i].dataset.fig][lang][0];
     }
   }
   const nearest = els => {
@@ -482,7 +498,51 @@ cd agent-hub &amp;&amp; python3 agent_hub.py</pre>
   addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(spy); } }, { passive: true });
   addEventListener('resize', () => { active = -1; spy(); });
   wide.addEventListener('change', place);
+
+  const toggle = document.querySelector('[data-lang-toggle]');
+  function applyLang(next) {
+    lang = next;
+    document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+    $$('[data-en]').forEach(e => {
+      e.dataset.zh ??= e.innerHTML;
+      e.innerHTML = lang === 'en' ? e.dataset.en : e.dataset.zh;
+    });
+    $$('[data-en-aria]').forEach(e => {
+      e.dataset.zhAria ??= e.getAttribute('aria-label');
+      e.setAttribute('aria-label', lang === 'en' ? e.dataset.enAria : e.dataset.zhAria);
+    });
+    document.title = META[lang][0];
+    document.querySelector('meta[name=description]').content = META[lang][1];
+    toggle.textContent = lang === 'en' ? '中文' : 'English';
+    toggle.setAttribute('aria-label', lang === 'en' ? '切换到中文' : 'Switch to English');
+    toggle.lang = lang === 'en' ? 'zh-CN' : 'en';
+    $$('video[data-media]').forEach(v => {
+      const k = v.dataset.media, was = !v.paused;
+      v.poster = mediaPath(k, 'jpg');
+      v.src = mediaPath(k, 'mp4');
+      if (FIGS[k]) v.setAttribute('aria-label', FIGS[k][lang][1]);
+      if (was) play(v);
+    });
+    chip.children[0].style.background = LINES[lang][lineIndex][0];
+    chip.children[1].textContent = LINES[lang][lineIndex][1];
+    active = -1;
+    spy();
+  }
+  toggle.addEventListener('click', () => {
+    const next = lang === 'en' ? 'zh' : 'en';
+    safeStore.set(next);
+    const url = new URL(location.href);
+    url.searchParams.set('lang', next);
+    history.replaceState(null, '', url);
+    applyLang(next);
+  });
+
+  const chip = document.querySelector('[data-chip]');
+  const asked = new URLSearchParams(location.search).get('lang');
+  const stored = safeStore.get();
+  const initial = ['zh', 'en'].includes(asked) ? asked : ['zh', 'en'].includes(stored) ? stored : (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
   place();
+  applyLang(initial);
 
   // Only the videos on screen keep playing.
   const seen = new IntersectionObserver(es => es.forEach(e => {
@@ -492,18 +552,14 @@ cd agent-hub &amp;&amp; python3 agent_hub.py</pre>
   }), { threshold: .2 });
   $$('video').forEach(v => seen.observe(v));
 
-  // The hero chip is shaped like the notch island and cycles its three statuses.
-  const chip = document.querySelector('[data-chip]');
   if (!REDUCED) {
-    const LINES = [['var(--wait)', '3 个对话在等你'], ['var(--done)', '4 个刚刚完成'], ['var(--run)', '4 个正在运行']];
-    let n = 0;
     setInterval(() => {
       if (document.hidden) return;
       chip.classList.add('swap');
       setTimeout(() => {
-        n = (n + 1) % LINES.length;
-        chip.children[0].style.background = LINES[n][0];
-        chip.children[1].textContent = LINES[n][1];
+        lineIndex = (lineIndex + 1) % LINES[lang].length;
+        chip.children[0].style.background = LINES[lang][lineIndex][0];
+        chip.children[1].textContent = LINES[lang][lineIndex][1];
         chip.classList.remove('swap');
       }, 320);
     }, 2600);
