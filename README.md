@@ -119,7 +119,7 @@ The server listens on `127.0.0.1` only. The page can only ask it to open a conve
 
 ## Not affiliated
 
-Agent Hub is an independent project and is not affiliated with or endorsed by OpenAI, Anthropic, xAI, Tencent or Anysphere. Product names are used only to describe compatibility. No logos are included in this repository: the icons you see are read at runtime from the apps installed on your Mac (a letter badge is shown if an app isn't installed).
+Agent Hub is an independent project and is not affiliated with or endorsed by OpenAI, Anthropic, xAI, Tencent or Anysphere. Product names are used only to describe compatibility. The app bundles no third-party logos: the icons you see are read at runtime from the apps installed on your Mac (a letter badge is shown if an app isn't installed). The landing page under `site/` shows these apps' icons only to describe compatibility.
 
 ## License
 
