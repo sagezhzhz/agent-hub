@@ -32,6 +32,7 @@ def main():
             if port == 0:
                 raise
     agent_hub.PORT = server.server_port
+    agent_hub.DESKTOP = True
     server.daemon_threads = True
     finished = threading.Event()
     stopping = threading.Event()

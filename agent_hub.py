@@ -44,6 +44,7 @@ from pathlib import Path
 HOST = "127.0.0.1"
 DEFAULT_PORT = int(os.environ.get("AGENT_HUB_PORT", "47321"))
 PORT = DEFAULT_PORT  # the port actually bound, set in main()
+DESKTOP = False  # set by desktop/server_entry.py
 HOME = Path.home()
 APP_SUPPORT = HOME / "Library" / "Application Support"
 PAGE = Path(__file__).with_name("agent_hub.html")
@@ -861,7 +862,7 @@ class Handler(BaseHTTPRequestHandler):
             # The page passes its UI language; only demo data is localized server-side.
             self.send(200, collect("en" if "lang=en" in self.path else "zh"))
         elif path == "/api/ping":
-            self.send(200, {"app": "agent-hub", "demo": DEMO})
+            self.send(200, {"app": "agent-hub", "demo": DEMO, "desktop": DESKTOP})
         else:
             self.send(404, {"error": "not found"})
 
@@ -891,10 +892,11 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def running_hub(port):
-    """True if an Agent Hub is already answering on this port."""
+    """True if a terminal Agent Hub is already answering on this port."""
     try:
         with urllib.request.urlopen(f"http://{HOST}:{port}/api/ping", timeout=1) as r:
-            return json.load(r).get("app") == "agent-hub"
+            info = json.load(r)
+            return info.get("app") == "agent-hub" and not info.get("desktop")
     except (OSError, ValueError):
         return False
 
@@ -905,7 +907,7 @@ def bind():
         try:
             return ThreadingHTTPServer((HOST, port), Handler), port
         except OSError:
-            if port == DEFAULT_PORT and running_hub(port):
+            if running_hub(port):
                 return None, port
     sys.exit(f"No free port between {DEFAULT_PORT} and {DEFAULT_PORT + 19}. Set AGENT_HUB_PORT to another number.")
 
