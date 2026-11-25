@@ -162,6 +162,7 @@ const STRINGS = {
     showAll: n => `显示全部 ${n} 个`, noMatch: "没有匹配的对话", noneYet: "还没有读到对话",
     demoData: "演示数据",
     readFailed: (app, msg) => `读取 ${app} 失败：${msg}`,
+    signedOut: app => `${app} 没有登录账号，登录后这里会显示它的对话`,
     emptyHint: ["没有找到 Codex、Claude、Grok Bot、WorkBuddy 或 Cursor 的本地对话。先在这些应用里开始一个对话，或用 ", " 看看演示效果。"],
     offline: "暂时连接不到服务，请重新打开 Agent Hub",
     demoOpen: "演示模式：不会真的打开应用", opened: app => `已在 ${app} 中打开`, openFailed: "打开失败",
@@ -178,6 +179,7 @@ const STRINGS = {
     showAll: n => `Show all ${n}`, noMatch: "No matching conversations", noneYet: "No conversations found yet",
     demoData: "demo data",
     readFailed: (app, msg) => `Couldn't read ${app}: ${msg}`,
+    signedOut: app => `${app} isn't signed in. Sign in to see its conversations here.`,
     emptyHint: ["No local conversations found from Codex, Claude, Grok Bot, WorkBuddy or Cursor. Start one in those apps, or try ", " to see a demo."],
     offline: "Can't reach the local service. Please reopen Agent Hub.",
     demoOpen: "Demo mode: no app is opened", opened: app => `Opened in ${app}`, openFailed: "Couldn't open it",
@@ -417,7 +419,9 @@ function render() {
   const attention = n("waiting") + n("unseen");
   document.title = (attention ? "(" + attention + ") " : "") + "Agent Hub";
   const notices = Object.entries(data.errors || {}).map(
-    ([app, msg]) => el("div", { class: "err" }, T.readFailed(appInfo(app)[0], msg)));
+    ([app, msg]) => msg === "signed-out"
+      ? el("p", { class: "meta" }, T.signedOut(appInfo(app)[0]))
+      : el("div", { class: "err" }, T.readFailed(appInfo(app)[0], msg)));
   if (!data.sessions.length && !data.demo && !notices.length) {
     notices.push(el("p", { class: "meta" }, T.emptyHint[0], el("code", {}, "python3 agent_hub.py --demo"), T.emptyHint[1]));
   }

@@ -65,6 +65,10 @@ class FormatError(Exception):
     """The app's data is there but not in a shape this version understands."""
 
 
+class SignedOut(Exception):
+    """The app is installed but no account is signed in, so it has no conversations to read."""
+
+
 def now_ms():
     return int(time.time() * 1000)
 
@@ -449,6 +453,23 @@ def grok_read(suffix):
     return None
 
 
+def grok_signed_out():
+    """Grok Bot keeps the signed-in account in client-meta.account-slot; signing out sets it to null
+    and drops every account slice, the conversation list included."""
+    for f in GROK_STORE.glob("*.blob"):
+        try:
+            key = b32key(f.stem)
+        except (ValueError, UnicodeDecodeError):
+            continue
+        if key == "sand.client.slice.client-meta.account-slot":
+            try:
+                data = json.loads(f.read_text())
+            except (OSError, ValueError):
+                return False
+            return isinstance(data, dict) and data.get("value") is None
+    return False
+
+
 def grok_still_working(bot_id, preview, activity):
     """The roster's preview is only the first line of the last message ("交接总结：" heading a finished
     handoff), so confirm a promise against the full last entry of the bot's transcript when one is stored.
@@ -473,6 +494,8 @@ def grok_sessions():
         return []
     roster = grok_read(".roster.last-roster")
     if roster is None:
+        if grok_signed_out():
+            raise SignedOut()
         if any(GROK_STORE.glob("*.blob")):
             raise FormatError("no conversation list found in Grok Bot's local storage")
         return []
@@ -827,6 +850,8 @@ def collect(lang="zh"):
     for key, spec in APPS.items():
         try:
             sessions.extend(spec["reader"]())
+        except SignedOut:
+            errors[key] = "signed-out"  # the page shows its own "not signed in" notice
         except FormatError as e:
             errors[key] = f"unrecognized data format ({e}); the app may have updated"
         except Exception as e:  # one broken source shouldn't blank the page
@@ -950,6 +975,9 @@ def check():
             print(f"  icon:    {'ok' if find_icns(key) else 'not found (letter badge will be shown)'}")
         try:
             sessions = spec["reader"]()
+        except SignedOut:
+            print("  data:    not signed in")
+            continue
         except FormatError as e:
             print(f"  data:    UNRECOGNIZED FORMAT: {e}")
             continue
